@@ -145,6 +145,10 @@ function getPassionMax(actor) {
   return Number(actor?.system?.harmony?.max ?? 0);
 }
 
+function getPassionPerTurn(actor) {
+  return Math.ceil(getPassionValue(actor) / 2);
+}
+
 function isPassionBonusEnabled(actor) {
   return Boolean(actor?.getFlag(MODULE_ID, PASSION_FLAG));
 }
@@ -152,6 +156,7 @@ function isPassionBonusEnabled(actor) {
 function buildPassionHtml(actor) {
   const passionValue = getPassionValue(actor);
   const passionMax = getPassionMax(actor);
+  const passionPerTurn = getPassionPerTurn(actor);
   const bonusEnabled = isPassionBonusEnabled(actor);
   const checked = bonusEnabled ? "checked" : "";
   const bonusText = bonusEnabled
@@ -164,12 +169,13 @@ function buildPassionHtml(actor) {
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
       <div class="gold-border"></div>
-      <div class="kMageTracker passion" data-type="passion" data-name="system.harmony" data-states="max/value" data-max="${passionMax}" data-value="${passionValue}"></div>
+      <div class="kMageTracker passion" data-type="passion" data-addmax="true" data-name="system.harmony" data-states="max/value" data-max="${passionMax}" data-value="${passionValue}"></div>
       <label class="checkBox shapeshifter-passion__toggle" title="Use Passion boxes to modify trait and skill rolls">
         <input data-dtype="Boolean" name="flags.${MODULE_ID}.${PASSION_FLAG}" type="checkbox" ${checked}>
         <span></span>
         <span>Use Passion for trait and skill rolls</span>
       </label>
+      <div class="description shapeshifter-passion__note">${passionPerTurn} Passion per turn</div>
       <div class="description shapeshifter-passion__note">${bonusText}</div>
     </div>
   `;
@@ -425,11 +431,16 @@ function patchSheetRender() {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
     const giftsTab = html.find('.tab[data-tab="gifts"]').first();
-    if (!giftsTab.length) return;
+    const passionBox = html.find(".kInput.statBox.big").filter((_, element) => {
+      const box = $(element);
+      return box.find("input[name='system.werewolf_traits.harmony.value']").length > 0
+        || box.find("label[for*='werewolf_traits.harmony']").length > 0
+        || box.find("label.attribute-button").first().text().trim() === "Harmony";
+    }).first();
 
     html.find('.tabs .item[data-tab="gifts"]').text("Myth");
 
-    giftsTab.find(".forms-column .item-name").each((_, element) => {
+    html.find(".forms-column .item-name").each((_, element) => {
       const nameBlock = $(element);
       const nameEl = nameBlock.children("div").first();
       const subnameEl = nameBlock.children(".subname").first();
@@ -440,20 +451,24 @@ function patchSheetRender() {
       if (subnameEl.length) subnameEl.text(`(${legacy.subname})`);
     });
 
-    giftsTab.find(".kInput.statBox.big").each((_, element) => {
-      const box = $(element);
-      const label = box.find("label.attribute-button").first();
-      if (label.text().trim() === "Primal Urge") label.text("Mythheart");
+    if (passionBox.length) {
+      passionBox.replaceWith(buildPassionHtml(app.actor));
+    }
 
-      if (box.find("input[name='system.essence.value']").length) {
-        const title = box.find("h4").first();
-        const titleText = title.text().replace(/\s+/g, " ").trim();
-        if (titleText.includes("Essence")) {
-          title.contents().filter((_, node) => node.nodeType === Node.TEXT_NODE).each((_, node) => {
-            node.textContent = node.textContent.replace("Essence", "Glamour");
-          });
-        }
+    html.find(".kInput.statBox.big").each((_, element) => {
+      const box = $(element);
+      if (!box.find("input[name='system.essence.value']").length) return;
+
+      const title = box.find("h4").first();
+      const titleText = title.text().replace(/\s+/g, " ").trim();
+      if (titleText.includes("Essence")) {
+        title.contents().filter((_, node) => node.nodeType === Node.TEXT_NODE).each((_, node) => {
+          node.textContent = node.textContent.replace("Essence", "Glamour");
+        });
       }
+
+      const essencePerTurn = Number(app.actor?.system?.essence_per_turn ?? 0);
+      box.find(".description").first().text(`${essencePerTurn} Glamour Per Turn`);
     });
 
     const renownList = giftsTab.find("ol.attributes-list").first();

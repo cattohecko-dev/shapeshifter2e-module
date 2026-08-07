@@ -15,7 +15,7 @@
   },
   "url": "https://github.com/cattohecko-dev/shapeshifter2e-module",
   "manifest": "https://raw.githubusercontent.com/cattohecko-dev/shapeshifter2e-module/main/module.json",
-  "download": "https://github.com/cattohecko-dev/shapeshifter2e-module/archive/refs/tags/0.1.zip",
+  "download": "https://github.com/cattohecko-dev/shapeshifter2e-module/archive/refs/tags/0.1.1.zip",
   "relationships": [
     {
       "id": "mta",

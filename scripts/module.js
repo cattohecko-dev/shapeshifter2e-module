@@ -1,12 +1,6 @@
-<<<<<<< Updated upstream
-import { ActorMtA } from "systems/mta/module/actor.js";
-import { ItemMtA } from "systems/mta/module/item.js";
-import { MtAItemSheet } from "systems/mta/module/item-sheet.js";
-=======
 import { ActorMtA } from "/systems/mta/module/actor.js";
 import { ItemMtA } from "/systems/mta/module/item.js";
 import { MtAItemSheet } from "/systems/mta/module/item-sheet.js";
->>>>>>> Stashed changes
 
 const MODULE_ID = "shapeshifter2e-module";
 const SHAPESHIFTER_VARIANT = "shapeshifter";
@@ -21,13 +15,7 @@ const SHAPESHIFTER_FORMS = [
     img: "systems/mta/icons/forms/Hishu.svg",
     system: {
       subname: "Human",
-<<<<<<< Updated upstream
-      effects: [
-        { name: "derivedTraits.perception", value: 1, overFive: true }
-      ],
-=======
       effects: [{ name: "derivedTraits.perception", value: 1, overFive: true }],
->>>>>>> Stashed changes
       description_short: "Sheep's Clothing",
       description: "",
       effectsActive: true
@@ -190,25 +178,14 @@ function buildPassionHtml(actor) {
 function buildRenownRowHtml(actor, renownKey, label) {
   const currentValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
   const boxes = Array.from({ length: 5 }, (_, index) => {
-<<<<<<< Updated upstream
-    const filled = index < currentValue ? "is-filled" : "";
-    return `<button type="button" class="shapeshifter-renown__box ${filled}" data-renown-key="${renownKey}" data-renown-value="${index + 1}" aria-label="${label} ${index + 1}">${filled ? "x" : ""}</button>`;
-=======
     const filled = index < currentValue;
     return `<button type="button" class="shapeshifter-renown__box ${filled ? "is-filled" : ""}" data-renown-key="${renownKey}" data-renown-value="${index + 1}" aria-label="${label} ${index + 1}">${filled ? "x" : ""}</button>`;
->>>>>>> Stashed changes
   }).join("");
 
   return `
     <li class="attribute flexrow shapeshifter-renown__row" data-renown-key="${renownKey}">
       <span class="attribute-button shapeshifter-renown__label">${label}</span>
-<<<<<<< Updated upstream
-      <span class="shapeshifter-renown__boxes">
-        ${boxes}
-      </span>
-=======
       <span class="shapeshifter-renown__boxes">${boxes}</span>
->>>>>>> Stashed changes
       <input type="hidden" name="system.werewolf_renown.${renownKey}.value" data-dtype="Number" value="${currentValue}">
     </li>
   `;
@@ -238,13 +215,9 @@ function buildMythFacetRow(item) {
   const action = item.system?.action ?? "";
   const effectActive = item.system?.effectsActive ? "effectActive" : "";
   const favorite = item.system?.isFavorite ? "fas" : "far";
-<<<<<<< Updated upstream
-  const effectIcon = item.system?.effects ? `<i class="activeIcon ${item.system?.effectsActive ? "fas" : "far"} fa-dot-circle" title="Effects active" data-item-id="${item._id}"></i>` : "";
-=======
   const effectIcon = item.system?.effects
     ? `<i class="activeIcon ${item.system?.effectsActive ? "fas" : "far"} fa-dot-circle" title="Effects active" data-item-id="${item._id}"></i>`
     : "";
->>>>>>> Stashed changes
 
   return `
     <tr class="item-row item" data-item-id="${item._id}" data-myth-category="${category}">
@@ -283,29 +256,17 @@ function buildMythFacetTable(actor) {
     grouped[category].push(item);
   }
 
-<<<<<<< Updated upstream
-  const subHeaderRow = (label) => `<tr class="sub-header"><td colspan="7">${label}</td></tr>`;
-  const rows = Object.entries(MYTH_FACET_CATEGORIES).map(([key, label]) => {
-    const categoryRows = (grouped[key] ?? []).map(buildMythFacetRow).join("");
-    return `${subHeaderRow(label)}${categoryRows}`;
-  }).join("");
-=======
   const subHeaderRow = label => `<tr class="sub-header"><td colspan="7">${label}</td></tr>`;
   const rows = Object.entries(MYTH_FACET_CATEGORIES)
     .map(([key, label]) => `${subHeaderRow(label)}${(grouped[key] ?? []).map(buildMythFacetRow).join("")}`)
     .join("");
->>>>>>> Stashed changes
 
   return `
     <table class="item-table shapeshifter-myth-facet-table">
       <thead>
         <tr class="item-row header">
           <th class="cell header first">
-<<<<<<< Updated upstream
-          <span class="sortable button" data-type="facet">Myth Facets</span>
-=======
             <span class="sortable button" data-type="facet">Myth Facets</span>
->>>>>>> Stashed changes
           </th>
           <th class="cell header">Myth</th>
           <th class="cell header">Level</th>
@@ -315,13 +276,7 @@ function buildMythFacetTable(actor) {
           <th class="cell header button item-create" data-type="facet">${game.i18n.localize("MTA.ButtonAdd")}</th>
         </tr>
       </thead>
-<<<<<<< Updated upstream
-      <tbody>
-        ${rows}
-      </tbody>
-=======
       <tbody>${rows}</tbody>
->>>>>>> Stashed changes
     </table>
   `;
 }
@@ -422,10 +377,6 @@ function patchActorPrepareData() {
     const passionBonusEnabled = isPassionBonusEnabled(this);
     const general = this.system?.generalModifiers;
 
-<<<<<<< Updated upstream
-    // Keep the base Harmony data path, but expose it as Passion for this template.
-=======
->>>>>>> Stashed changes
     this.system.passion = {
       value: passionValue,
       max: getPassionMax(this),
@@ -474,10 +425,7 @@ function patchSheetRender() {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
     const giftsTab = html.find('.tab[data-tab="gifts"]').first();
-<<<<<<< Updated upstream
-=======
     if (!giftsTab.length) return;
->>>>>>> Stashed changes
 
     html.find('.tabs .item[data-tab="gifts"]').text("Myth");
 
@@ -492,21 +440,10 @@ function patchSheetRender() {
       if (subnameEl.length) subnameEl.text(`(${legacy.subname})`);
     });
 
-<<<<<<< Updated upstream
-    html.find(".kInput.statBox.big").each((_, element) => {
-      const box = $(element);
-      const label = box.find("label.attribute-button").first();
-      const labelText = label.text().trim();
-      if (labelText === "Primal Urge") {
-        label.text("Mythheart");
-      }
-=======
     giftsTab.find(".kInput.statBox.big").each((_, element) => {
       const box = $(element);
       const label = box.find("label.attribute-button").first();
-      const labelText = label.text().trim();
-      if (labelText === "Primal Urge") label.text("Mythheart");
->>>>>>> Stashed changes
+      if (label.text().trim() === "Primal Urge") label.text("Mythheart");
 
       if (box.find("input[name='system.essence.value']").length) {
         const title = box.find("h4").first();
@@ -524,23 +461,6 @@ function patchSheetRender() {
       renownList.replaceWith(buildRenownBlock(app.actor));
     }
 
-<<<<<<< Updated upstream
-    const renownBoxes = html.find(".shapeshifter-renown__box");
-    renownBoxes.off("click.shapeshifterRenown").on("click.shapeshifterRenown", async ev => {
-      ev.preventDefault();
-      if (!app.actor?.isOwner) return;
-
-      const button = ev.currentTarget;
-      const key = button.dataset.renownKey;
-      const value = Number(button.dataset.renownValue ?? 0);
-      const current = Number(app.actor.system?.werewolf_renown?.[key]?.value ?? 0);
-      const next = current === value ? 0 : value;
-
-      await app.actor.update({
-        [`system.werewolf_renown.${key}.value`]: next
-      });
-    });
-=======
     giftsTab.find(".shapeshifter-renown__box")
       .off("click.shapeshifterRenown")
       .on("click.shapeshifterRenown", async ev => {
@@ -557,7 +477,6 @@ function patchSheetRender() {
           [`system.werewolf_renown.${key}.value`]: next
         });
       });
->>>>>>> Stashed changes
 
     const facetTable = giftsTab.find("table.item-table").filter((_, element) => {
       return $(element).find('.item-create[data-type="facet"]').length > 0;
@@ -567,45 +486,6 @@ function patchSheetRender() {
       facetTable.replaceWith(buildMythFacetTable(app.actor));
     }
 
-<<<<<<< Updated upstream
-    const mythTable = html.find(".shapeshifter-myth-facet-table").first();
-    if (mythTable.length) {
-      mythTable.off("click.shapeshifterMyth");
-      mythTable.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
-      mythTable.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
-      mythTable.on("click.shapeshifterMyth", ".item-edit", event => {
-        const itemId = event.currentTarget.dataset.itemId;
-        const item = app.actor.items.get(itemId);
-        item?.sheet.render(true);
-      });
-      mythTable.on("click.shapeshifterMyth", ".item-delete", ev => {
-        const itemId = ev.currentTarget.dataset.itemId;
-        if (!itemId) return;
-
-        if (ev.shiftKey) {
-          app.actor.deleteEmbeddedDocuments("Item", [itemId]);
-          return;
-        }
-
-        new foundry.appv1.api.Dialog({
-          title: "Confirm delete",
-          content: "<p>Are you sure you want to permanently delete this item?</p><p>(Holding shift skips this dialogue)</p>",
-          buttons: {
-            one: {
-              icon: '<i class="fas fa-trash"></i>',
-              label: "Delete",
-              callback: () => app.actor.deleteEmbeddedDocuments("Item", [itemId])
-            },
-            two: {
-              label: "Cancel"
-            }
-          },
-          default: "two"
-        }).render(true);
-      });
-      mythTable.on("click.shapeshifterMyth", ".item-create", event => app._onItemCreate(event));
-    }
-=======
     const mythTable = giftsTab.find(".shapeshifter-myth-facet-table").first();
     if (!mythTable.length) return;
 
@@ -641,7 +521,6 @@ function patchSheetRender() {
       }).render(true);
     });
     mythTable.on("click.shapeshifterMyth", ".item-create", event => app._onItemCreate(event));
->>>>>>> Stashed changes
   });
 
   Hooks._shapeshifterPassionRenderPatched = true;

@@ -231,6 +231,31 @@
   flex-direction: column;
 }
 
+.shapeshifter-passion__boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: center;
+  min-height: 2rem;
+}
+
+.shapeshifter-passion__box {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(220, 145, 166, 0.9);
+  border-radius: 0.35rem;
+  background: rgba(244, 194, 206, 0.55);
+  color: #fff3f6;
+  font-weight: 700;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.shapeshifter-passion__box.is-filled {
+  background: rgba(241, 175, 194, 0.98);
+}
+
 .shapeshifter-passion__total .plusBtn,
 .shapeshifter-passion__total .minusBtn {
   width: 1.2rem;

@@ -152,9 +152,12 @@ function buildPassionHtml(actor) {
   const passionValue = getPassionValue(actor);
   const passionMax = getPassionMax(actor);
   const passionPerTurn = getPassionPerTurn(actor);
+  const passionBoxes = Array.from({ length: Math.max(0, Math.trunc(passionValue)) }, (_, index) => {
+    return `<button type="button" class="shapeshifter-passion__box" data-passion-box="${index + 1}" aria-label="Passion ${index + 1}">x</button>`;
+  }).join("");
 
   return `
-    <div class="kInput statBox big shapeshifter-passion">
+    <div class="kInput statBox big shapeshifter-passion shapeshifter-sheet__panel">
       <h4>
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
@@ -427,6 +430,8 @@ function patchSheetRender() {
 
   Hooks.on("renderActorSheet", (app, html) => {
     if (!isShapeshifterWerewolf(app.actor)) return;
+
+    html.addClass("shapeshifter-sheet");
 
     const passionBox = html.find(".kInput.statBox.big").filter((_, element) => {
       const box = $(element);

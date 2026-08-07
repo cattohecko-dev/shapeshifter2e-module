@@ -1,0 +1,78 @@
+<form class="{{cssClass}}" autocomplete="off">
+  <section class="shapeshifter-sheet__frame">
+    <header class="shapeshifter-sheet__hero">
+      <div class="shapeshifter-sheet__portrait">
+        <img class="profile-img" src="{{actor.img}}" data-edit="img" title="{{actor.name}}">
+      </div>
+
+      <div class="shapeshifter-sheet__identity">
+        <input class="shapeshifter-sheet__name" type="text" name="name" value="{{actor.name}}" placeholder="Name">
+        <p class="shapeshifter-sheet__subtitle">{{shapeshifter.tagline}}</p>
+
+        <div class="shapeshifter-sheet__track-row">
+          <div class="shapeshifter-sheet__track">
+            <span class="shapeshifter-sheet__track-label">{{localize "MTA.Health"}}</span>
+            <span class="shapeshifter-sheet__track-value">{{system.health.value}} / {{system.health.max}}</span>
+          </div>
+          <div class="shapeshifter-sheet__track">
+            <span class="shapeshifter-sheet__track-label">{{localize "MTA.Willpower"}}</span>
+            <span class="shapeshifter-sheet__track-value">{{system.willpower.value}} / {{system.willpower.max}}</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="shapeshifter-sheet__story">
+      <label class="shapeshifter-sheet__field shapeshifter-sheet__field--wide">
+        <span>Tagline</span>
+        <input type="text" name="flags.shapeshifter2e-module.sheet.tagline" value="{{shapeshifter.tagline}}" placeholder="A one-line hook for the character">
+      </label>
+
+      <label class="shapeshifter-sheet__field">
+        <span>Concept</span>
+        <input type="text" name="flags.shapeshifter2e-module.sheet.concept" value="{{shapeshifter.concept}}" placeholder="Who are they at a glance?">
+      </label>
+
+      <label class="shapeshifter-sheet__field">
+        <span>Playbook</span>
+        <input type="text" name="flags.shapeshifter2e-module.sheet.playbook" value="{{shapeshifter.playbook}}" placeholder="What role do they fill?">
+      </label>
+
+      <label class="shapeshifter-sheet__field shapeshifter-sheet__field--wide">
+        <span>Core Notes</span>
+        <textarea name="flags.shapeshifter2e-module.sheet.notes" rows="4" placeholder="Use this space for the fan-game details that do not live in the system rules.">{{shapeshifter.notes}}</textarea>
+      </label>
+    </section>
+
+    <section class="shapeshifter-sheet__meta">
+      <div class="shapeshifter-sheet__chip">
+        <span class="shapeshifter-sheet__chip-label">Type</span>
+        <span class="shapeshifter-sheet__chip-value">{{system.characterType}}</span>
+      </div>
+      <div class="shapeshifter-sheet__chip">
+        <span class="shapeshifter-sheet__chip-label">Variant</span>
+        <span class="shapeshifter-sheet__chip-value">{{system.characterVariant}}</span>
+      </div>
+      <div class="shapeshifter-sheet__chip">
+        <span class="shapeshifter-sheet__chip-label">Defense</span>
+        <span class="shapeshifter-sheet__chip-value">{{system.derivedTraits.defense.final}}</span>
+      </div>
+      <div class="shapeshifter-sheet__chip">
+        <span class="shapeshifter-sheet__chip-label">Speed</span>
+        <span class="shapeshifter-sheet__chip-value">{{system.derivedTraits.speed.final}}</span>
+      </div>
+    </section>
+
+    <section class="shapeshifter-sheet__core">
+      <div class="shapeshifter-sheet__panel">
+        <h2 class="shapeshifter-sheet__panel-title">Attributes and Skills</h2>
+        {{> "systems/mta/templates/actors/parts/base-attributes.hbs"}}
+      </div>
+
+      <div class="shapeshifter-sheet__panel">
+        <h2 class="shapeshifter-sheet__panel-title">Inventory</h2>
+        {{> "systems/mta/templates/actors/parts/base-inventory.hbs"}}
+      </div>
+    </section>
+  </section>
+</form>

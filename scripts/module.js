@@ -136,7 +136,8 @@ function isShapeshifterWerewolf(actor) {
 }
 
 function getPassionValue(actor) {
-  return Number(actor?.system?.harmony?.value ?? 0);
+  const value = actor?.system?.harmony?.value;
+  return value == null ? 1 : Number(value);
 }
 
 function getPassionMax(actor) {
@@ -158,7 +159,13 @@ function buildPassionHtml(actor) {
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
       <div class="gold-border"></div>
-      <div class="kMageTracker passion" data-type="passion" data-name="system.harmony" data-states="max/value" data-max="${passionMax}" data-value="${passionValue}"></div>
+      <div class="niceNumber buttonsLeft shapeshifter-passion__total">
+        <input name="system.harmony.value" type="number" value="${passionValue}" data-dtype="Number" step="1">
+        <div class="numBtns">
+          <div class="plusBtn">+</div>
+          <div class="minusBtn">−</div>
+        </div>
+      </div>
       <div class="description shapeshifter-passion__note">${passionPerTurn} Passion per turn</div>
     </div>
   `;
@@ -355,6 +362,7 @@ function patchActorPrepareData() {
     if (!this.system) return;
 
     if (this.type === "character" && this.system.characterType === "werewolf") {
+      if (this.system.harmony?.value == null) this.system.harmony.value = 1;
       this.system.werewolf_renown ??= {};
 
       for (const [oldKey, newKey] of Object.entries(LEGACY_RENOWN_TO_NEW)) {
@@ -442,15 +450,42 @@ function patchSheetRender() {
       passionBox.replaceWith(buildPassionHtml(app.actor));
     }
 
+    const passionTrack = html.find(".shapeshifter-passion").first();
+    passionTrack
+      .off("click.shapeshifterPassion")
+      .on("click.shapeshifterPassion", ".plusBtn, .minusBtn", async ev => {
+        ev.preventDefault();
+        if (!app.actor?.isOwner) return;
+
+        const isPlus = $(ev.currentTarget).hasClass("plusBtn");
+        const current = Number(app.actor.system?.harmony?.value ?? 1);
+        const next = current + (isPlus ? 1 : -1);
+
+        await app.actor.update({
+          "system.harmony.value": next
+        });
+      })
+      .on("change.shapeshifterPassion", "input[name='system.harmony.value']", async ev => {
+        if (!app.actor?.isOwner) return;
+
+        const next = Number(ev.currentTarget.value ?? 0);
+        await app.actor.update({
+          "system.harmony.value": next
+        });
+      });
+
     html.find(".kInput.statBox.big").each((_, element) => {
       const box = $(element);
       if (!box.find("input[name='system.essence.value']").length) return;
 
       const title = box.find("h4").first();
       const titleText = title.text().replace(/\s+/g, " ").trim();
-      if (titleText.includes("Essence")) {
+      if (titleText.includes("Essence") || titleText.includes("Primal Urge") || titleText.includes("Mythheart")) {
         title.contents().filter((_, node) => node.nodeType === Node.TEXT_NODE).each((_, node) => {
-          node.textContent = node.textContent.replace("Essence", "Glamour");
+          node.textContent = node.textContent
+            .replace("Primal Urge", "Mythheart")
+            .replace("Essence", "Mythheart")
+            .replace("Mythheart", "Mythheart");
         });
       }
 

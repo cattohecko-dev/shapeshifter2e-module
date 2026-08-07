@@ -174,6 +174,117 @@
   color: var(--shapeshifter-accent);
 }
 
+.shapeshifter-passion {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(37, 27, 16, 0.95), rgba(21, 15, 8, 0.95)),
+    url(../ui/rock.jpg) repeat;
+}
+
+.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div[data-state='1'] {
+  background:
+    linear-gradient(180deg, rgba(227, 166, 88, 0.95), rgba(125, 73, 26, 0.95)),
+    url(../ui/rock.jpg) repeat;
+}
+
+.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div[data-state='1']::after {
+  content: "x";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff7ef;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.shapeshifter-passion__title {
+  cursor: default;
+}
+
+.shapeshifter-passion__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.shapeshifter-passion__toggle span:last-child {
+  line-height: 1.1;
+}
+
+.shapeshifter-passion__note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(28, 27, 26, 0.72);
+}
+
+.shapeshifter-renown-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.shapeshifter-renown__row {
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.3rem 0;
+}
+
+.shapeshifter-renown__label {
+  min-width: 9rem;
+}
+
+.shapeshifter-renown__boxes {
+  display: grid;
+  grid-template-columns: repeat(5, 2rem);
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.shapeshifter-renown__box {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgba(28, 27, 26, 0.38);
+  border-radius: 0.35rem;
+  background: rgba(255, 255, 255, 0.36);
+  color: var(--shapeshifter-accent);
+  font-weight: 700;
+  line-height: 1;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.shapeshifter-renown__box.is-filled {
+  background: rgba(194, 141, 100, 0.42);
+  border-color: rgba(139, 94, 60, 0.75);
+}
+
+.shapeshifter-myth-facet-table .item-name-wrapper {
+  align-items: center;
+}
+
+.shapeshifter-myth-facet-table .item-image {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  background-size: cover;
+  background-position: center;
+}
+
+.shapeshifter-myth-facet-table .sub-header td {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 @media (max-width: 1100px) {
   .shapeshifter-sheet__hero,
   .shapeshifter-sheet__story,

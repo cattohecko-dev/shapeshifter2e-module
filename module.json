@@ -2,7 +2,7 @@
   "id": "shapeshifter2e-module",
   "title": "Shapeshifter 2e Template",
   "description": "Adds a fan-game template option to the existing Chronicles of Darkness 2e character sheet.",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "authors": [
     {
       "name": "Cat"
@@ -15,7 +15,7 @@
   },
   "url": "https://github.com/cattohecko-dev/shapeshifter2e-module",
   "manifest": "https://raw.githubusercontent.com/cattohecko-dev/shapeshifter2e-module/main/module.json",
-  "download": "https://github.com/cattohecko-dev/shapeshifter2e-module/archive/refs/tags/0.1.zip",
+  "download": "https://github.com/cattohecko-dev/shapeshifter2e-module/archive/refs/tags/0.1.2.zip",
   "relationships": [
     {
       "id": "mta",
@@ -25,5 +25,8 @@
   ],
   "esmodules": [
     "scripts/module.js"
+  ],
+  "styles": [
+    "styles/module.css"
   ]
 }

@@ -431,8 +431,6 @@ function patchSheetRender() {
   Hooks.on("renderActorSheet", (app, html) => {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
-    html.addClass("shapeshifter-sheet");
-
     const passionBox = html.find(".kInput.statBox.big").filter((_, element) => {
       const box = $(element);
       const title = box.find("label.attribute-button").first().text().trim();

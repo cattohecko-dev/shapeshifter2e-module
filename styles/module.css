@@ -1,4 +1,5 @@
-.shapeshifter-sheet {
+.shapeshifter-sheet,
+.shapeshifter-sheet__frame {
   --shapeshifter-ink: #1c1b1a;
   --shapeshifter-paper: #efe6d5;
   --shapeshifter-paper-soft: #f7f0e7;
@@ -174,37 +175,12 @@
   color: var(--shapeshifter-accent);
 }
 
-.shapeshifter-passion {
+.shapeshifter-passion.shapeshifter-sheet__panel {
   display: grid;
   gap: 0.6rem;
   color: #d8d8d8;
-}
-
-.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div {
-  position: relative;
-  background:
-    linear-gradient(180deg, rgba(102, 55, 68, 0.95), rgba(68, 29, 41, 0.95)),
-    url(../ui/rock.jpg) repeat;
-  border-color: rgba(237, 176, 190, 0.55);
-}
-
-.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div[data-state='1'] {
-  background:
-    linear-gradient(180deg, rgba(241, 175, 194, 0.98), rgba(181, 92, 118, 0.98)),
-    url(../ui/rock.jpg) repeat;
-  border-color: rgba(247, 215, 224, 0.9);
-}
-
-.shapeshifter-passion .kMageTracker[data-type='passion'] .boxes > div[data-state='1']::after {
-  content: "x";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff8fb;
-  font-size: 1.05rem;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+  background: rgba(20, 12, 16, 0.42);
+  border-color: rgba(220, 145, 166, 0.45);
 }
 
 .shapeshifter-passion__title {
@@ -234,26 +210,33 @@
 .shapeshifter-passion__boxes {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.28rem;
   justify-content: center;
-  min-height: 2rem;
+  min-height: 1.5rem;
 }
 
 .shapeshifter-passion__box {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid rgba(220, 145, 166, 0.9);
-  border-radius: 0.35rem;
-  background: rgba(244, 194, 206, 0.55);
-  color: #fff3f6;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid rgba(220, 145, 166, 0.75);
+  border-radius: 0.2rem;
+  background:
+    linear-gradient(180deg, rgba(92, 37, 53, 0.9), rgba(44, 18, 28, 0.9)),
+    url(../ui/rock.jpg) repeat;
+  color: rgba(255, 230, 236, 0.95);
   font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1;
   display: inline-grid;
   place-items: center;
   cursor: pointer;
 }
 
 .shapeshifter-passion__box.is-filled {
-  background: rgba(241, 175, 194, 0.98);
+  background:
+    linear-gradient(180deg, rgba(241, 175, 194, 0.98), rgba(181, 92, 118, 0.98)),
+    url(../ui/rock.jpg) repeat;
+  border-color: rgba(247, 215, 224, 0.9);
 }
 
 .shapeshifter-passion__total .plusBtn,
@@ -324,22 +307,73 @@
 }
 
 .shapeshifter-renown__box {
-  width: 2rem;
-  height: 2rem;
-  border: 1px solid rgba(28, 27, 26, 0.38);
-  border-radius: 0.35rem;
-  background: rgba(255, 255, 255, 0.36);
-  color: #f0dce1;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 1px solid rgba(220, 145, 166, 0.75);
+  border-radius: 0.2rem;
+  background:
+    linear-gradient(180deg, rgba(92, 37, 53, 0.9), rgba(44, 18, 28, 0.9)),
+    url(../ui/rock.jpg) repeat;
+  color: #f2d15b;
   font-weight: 700;
+  font-size: 0.95rem;
   line-height: 1;
   display: inline-grid;
   place-items: center;
   cursor: pointer;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
 }
 
 .shapeshifter-renown__box.is-filled {
-  background: rgba(238, 175, 191, 0.58);
-  border-color: rgba(220, 145, 166, 0.88);
+  background:
+    linear-gradient(180deg, rgba(241, 175, 194, 0.98), rgba(181, 92, 118, 0.98)),
+    url(../ui/rock.jpg) repeat;
+  border-color: rgba(247, 215, 224, 0.9);
+}
+
+.shapeshifter-renown__row[data-renown-key='civility'] .shapeshifter-renown__box,
+.shapeshifter-renown__row[data-renown-key='empathy'] .shapeshifter-renown__box {
+  background:
+    linear-gradient(180deg, rgba(82, 74, 108, 0.9), rgba(38, 33, 50, 0.9)),
+    url(../ui/rock.jpg) repeat;
+  border-color: rgba(157, 143, 190, 0.78);
+}
+
+.shapeshifter-renown__row[data-renown-key='civility'] .shapeshifter-renown__box.is-filled,
+.shapeshifter-renown__row[data-renown-key='empathy'] .shapeshifter-renown__box.is-filled {
+  background:
+    linear-gradient(180deg, rgba(141, 127, 179, 0.98), rgba(78, 67, 108, 0.98)),
+    url(../ui/rock.jpg) repeat;
+}
+
+.shapeshifter-renown__row[data-renown-key='competence'] .shapeshifter-renown__box,
+.shapeshifter-renown__row[data-renown-key='guardianship'] .shapeshifter-renown__box {
+  background:
+    linear-gradient(180deg, rgba(102, 45, 52, 0.92), rgba(52, 20, 24, 0.92)),
+    url(../ui/rock.jpg) repeat;
+  border-color: rgba(194, 124, 132, 0.78);
+}
+
+.shapeshifter-renown__row[data-renown-key='competence'] .shapeshifter-renown__box.is-filled,
+.shapeshifter-renown__row[data-renown-key='guardianship'] .shapeshifter-renown__box.is-filled {
+  background:
+    linear-gradient(180deg, rgba(182, 92, 101, 0.98), rgba(95, 37, 44, 0.98)),
+    url(../ui/rock.jpg) repeat;
+}
+
+.shapeshifter-renown__row[data-renown-key='integrity'] .shapeshifter-renown__box,
+.shapeshifter-renown__row[data-renown-key='magnanimity'] .shapeshifter-renown__box {
+  background:
+    linear-gradient(180deg, rgba(49, 101, 72, 0.92), rgba(20, 52, 36, 0.92)),
+    url(../ui/rock.jpg) repeat;
+  border-color: rgba(118, 182, 141, 0.8);
+}
+
+.shapeshifter-renown__row[data-renown-key='integrity'] .shapeshifter-renown__box.is-filled,
+.shapeshifter-renown__row[data-renown-key='magnanimity'] .shapeshifter-renown__box.is-filled {
+  background:
+    linear-gradient(180deg, rgba(79, 161, 111, 0.98), rgba(34, 88, 58, 0.98)),
+    url(../ui/rock.jpg) repeat;
 }
 
 .shapeshifter-myth-facet-table .item-name-wrapper {

@@ -4,8 +4,6 @@ import { MtAItemSheet } from "/systems/mta/module/item-sheet.js";
 
 const MODULE_ID = "shapeshifter2e-module";
 const SHAPESHIFTER_VARIANT = "shapeshifter";
-const PASSION_FLAG = "passionUsesDicePools";
-
 const MYTH_FACET_TEMPLATE = `modules/${MODULE_ID}/templates/items/myth-facet.html`;
 
 const SHAPESHIFTER_FORMS = [
@@ -149,19 +147,10 @@ function getPassionPerTurn(actor) {
   return Math.ceil(getPassionValue(actor) / 2);
 }
 
-function isPassionBonusEnabled(actor) {
-  return Boolean(actor?.getFlag(MODULE_ID, PASSION_FLAG));
-}
-
 function buildPassionHtml(actor) {
   const passionValue = getPassionValue(actor);
   const passionMax = getPassionMax(actor);
   const passionPerTurn = getPassionPerTurn(actor);
-  const bonusEnabled = isPassionBonusEnabled(actor);
-  const checked = bonusEnabled ? "checked" : "";
-  const bonusText = bonusEnabled
-    ? `Adds +${passionValue} to trait and skill rolls.`
-    : "Turn this on to let Passion modify trait and skill rolls.";
 
   return `
     <div class="kInput statBox big shapeshifter-passion">
@@ -169,14 +158,8 @@ function buildPassionHtml(actor) {
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
       <div class="gold-border"></div>
-      <div class="kMageTracker passion" data-type="passion" data-addmax="true" data-name="system.harmony" data-states="max/value" data-max="${passionMax}" data-value="${passionValue}"></div>
-      <label class="checkBox shapeshifter-passion__toggle" title="Use Passion boxes to modify trait and skill rolls">
-        <input data-dtype="Boolean" name="flags.${MODULE_ID}.${PASSION_FLAG}" type="checkbox" ${checked}>
-        <span></span>
-        <span>Use Passion for trait and skill rolls</span>
-      </label>
+      <div class="kMageTracker passion" data-type="passion" data-name="system.harmony" data-states="max/value" data-max="${passionMax}" data-value="${passionValue}"></div>
       <div class="description shapeshifter-passion__note">${passionPerTurn} Passion per turn</div>
-      <div class="description shapeshifter-passion__note">${bonusText}</div>
     </div>
   `;
 }
@@ -380,28 +363,23 @@ function patchActorPrepareData() {
     if (!isShapeshifterWerewolf(this)) return;
 
     const passionValue = getPassionValue(this);
-    const passionBonusEnabled = isPassionBonusEnabled(this);
     const general = this.system?.generalModifiers;
 
     this.system.passion = {
       value: passionValue,
       max: getPassionMax(this),
-      applyToDicePools: passionBonusEnabled
+      perTurn: getPassionPerTurn(this),
+      checkedBoxes: passionValue,
+      totalBoxes: getPassionMax(this),
+      remainingBoxes: Math.max(0, getPassionMax(this) - passionValue),
+      effectFramework: {
+        checkedBoxes: passionValue,
+        totalBoxes: getPassionMax(this),
+        affectedSkills: []
+      }
     };
 
-    if (!passionBonusEnabled || !general?.allDicePools) return;
-
-    const currentBonus = Number.isFinite(general.allDicePools.final)
-      ? Number(general.allDicePools.final)
-      : Number.isFinite(general.allDicePools.raw)
-        ? Number(general.allDicePools.raw)
-        : Number.isFinite(general.allDicePools.value)
-          ? Number(general.allDicePools.value)
-          : 0;
-
-    general.allDicePools.raw = currentBonus + passionValue;
-    general.allDicePools.final = currentBonus + passionValue;
-    general.allDicePools.isModified = true;
+    if (!general?.allDicePools) return;
   };
 
   ActorMtA.prototype._shapeshifterPassionPatched = true;
@@ -430,7 +408,6 @@ function patchSheetRender() {
   Hooks.on("renderActorSheet", (app, html) => {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
-    const giftsTab = html.find('.tab[data-tab="gifts"]').first();
     const passionBox = html.find(".kInput.statBox.big").filter((_, element) => {
       const box = $(element);
       return box.find("input[name='system.werewolf_traits.harmony.value']").length > 0
@@ -471,6 +448,7 @@ function patchSheetRender() {
       box.find(".description").first().text(`${essencePerTurn} Glamour Per Turn`);
     });
 
+    const giftsTab = html.find('.tab[data-tab="gifts"]').first();
     const renownList = giftsTab.find("ol.attributes-list").first();
     if (renownList.length) {
       renownList.replaceWith(buildRenownBlock(app.actor));

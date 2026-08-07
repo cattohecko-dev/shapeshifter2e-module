@@ -148,16 +148,21 @@ function getPassionPerTurn(actor) {
   return Math.ceil(getPassionValue(actor) / 2);
 }
 
+function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr = "data-track-value", extraAttributes = "") {
+  return Array.from({ length: Math.max(0, count) }, (_, index) => {
+    const filled = index < filledCount;
+    return `<div class="${baseClass} ${filled ? "is-filled" : ""}" data-state="${filled ? 1 : 0}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}">${filled ? "x" : ""}</div>`;
+  }).join("");
+}
+
 function buildPassionHtml(actor) {
   const passionValue = getPassionValue(actor);
-  const passionMax = getPassionMax(actor);
   const passionPerTurn = getPassionPerTurn(actor);
-  const passionBoxes = Array.from({ length: Math.max(0, Math.trunc(passionValue)) }, (_, index) => {
-    return `<button type="button" class="shapeshifter-passion__box" data-passion-box="${index + 1}" aria-label="Passion ${index + 1}">x</button>`;
-  }).join("");
+  const passionBoxCount = Math.max(0, Math.trunc(passionValue));
+  const passionBoxes = buildTrackerBoxes(passionBoxCount, passionBoxCount, "shapeshifter-passion__box", "Passion", "data-passion-box");
 
   return `
-    <div class="kInput statBox big shapeshifter-passion shapeshifter-sheet__panel">
+    <div class="kInput statBox big shapeshifter-passion">
       <h4>
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
@@ -166,7 +171,7 @@ function buildPassionHtml(actor) {
         <input name="system.harmony.value" type="number" value="${passionValue}" data-dtype="Number" step="1">
         <div class="numBtns">
           <div class="plusBtn">+</div>
-          <div class="minusBtn">−</div>
+          <div class="minusBtn">-</div>
         </div>
       </div>
       <div class="shapeshifter-passion__boxes">${passionBoxes}</div>
@@ -178,10 +183,7 @@ function buildPassionHtml(actor) {
 function buildRenownRowHtml(actor, renownKey, label) {
   const totalValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
   const temporaryValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.temporary ?? 0);
-  const boxes = Array.from({ length: 5 }, (_, index) => {
-    const filled = index < temporaryValue;
-    return `<button type="button" class="shapeshifter-renown__box ${filled ? "is-filled" : ""}" data-renown-key="${renownKey}" data-renown-value="${index + 1}" aria-label="${label} ${index + 1}">${filled ? "x" : ""}</button>`;
-  }).join("");
+  const boxes = buildTrackerBoxes(5, temporaryValue, "shapeshifter-renown__box", label, "data-renown-value", `data-renown-key="${renownKey}"`);
 
   return `
     <li class="attribute flexrow shapeshifter-renown__row" data-renown-key="${renownKey}">
@@ -189,7 +191,7 @@ function buildRenownRowHtml(actor, renownKey, label) {
         <input name="system.werewolf_renown.${renownKey}.value" type="number" value="${totalValue}" data-dtype="Number" min="0" max="5">
         <div class="numBtns">
           <div class="plusBtn">+</div>
-          <div class="minusBtn">âˆ’</div>
+          <div class="minusBtn">-</div>
         </div>
       </div>
       <span class="attribute-button shapeshifter-renown__label">${label}</span>
@@ -493,16 +495,24 @@ function patchSheetRender() {
 
     html.find(".kInput.statBox.big").each((_, element) => {
       const box = $(element);
-      const title = box.find("h4").first();
-      const titleText = title.text().replace(/\s+/g, " ").trim();
-      if (titleText.includes("Primal Urge")) {
-        title.contents().filter((_, node) => node.nodeType === Node.TEXT_NODE).each((_, node) => {
+      const hasPrimalUrge = box.text().includes("Primal Urge");
+      const hasEssence = box.text().includes("Essence");
+      const title = box.find("label.attribute-button").first();
+
+      if (hasPrimalUrge) {
+        if (title.length) {
+          title.text(title.text().replace("Primal Urge", "Mythheart"));
+        }
+        box.find("*").addBack().contents().filter((_, node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Primal Urge")).each((_, node) => {
           node.textContent = node.textContent.replace("Primal Urge", "Mythheart");
         });
       }
 
-      if (titleText.includes("Essence")) {
-        title.contents().filter((_, node) => node.nodeType === Node.TEXT_NODE).each((_, node) => {
+      if (hasEssence) {
+        if (title.length) {
+          title.text(title.text().replace("Essence", "Glamour"));
+        }
+        box.find("*").addBack().contents().filter((_, node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Essence")).each((_, node) => {
           node.textContent = node.textContent.replace("Essence", "Glamour");
         });
 
@@ -590,3 +600,4 @@ Hooks.once("init", () => {
   patchWerewolfForms();
   patchSheetRender();
 });
+

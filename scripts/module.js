@@ -165,17 +165,25 @@ function buildPassionHtml(actor) {
 }
 
 function buildRenownRowHtml(actor, renownKey, label) {
-  const currentValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
+  const totalValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
+  const temporaryValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.temporary ?? 0);
   const boxes = Array.from({ length: 5 }, (_, index) => {
-    const filled = index < currentValue;
+    const filled = index < temporaryValue;
     return `<button type="button" class="shapeshifter-renown__box ${filled ? "is-filled" : ""}" data-renown-key="${renownKey}" data-renown-value="${index + 1}" aria-label="${label} ${index + 1}">${filled ? "x" : ""}</button>`;
   }).join("");
 
   return `
     <li class="attribute flexrow shapeshifter-renown__row" data-renown-key="${renownKey}">
+      <div class="niceNumber buttonsLeft shapeshifter-renown__total">
+        <input name="system.werewolf_renown.${renownKey}.value" type="number" value="${totalValue}" data-dtype="Number" min="0" max="5">
+        <div class="numBtns">
+          <div class="plusBtn">+</div>
+          <div class="minusBtn">âˆ’</div>
+        </div>
+      </div>
       <span class="attribute-button shapeshifter-renown__label">${label}</span>
       <span class="shapeshifter-renown__boxes">${boxes}</span>
-      <input type="hidden" name="system.werewolf_renown.${renownKey}.value" data-dtype="Number" value="${currentValue}">
+      <input type="hidden" name="system.werewolf_renown.${renownKey}.temporary" data-dtype="Number" value="${temporaryValue}">
     </li>
   `;
 }
@@ -189,7 +197,7 @@ function buildRenownBlock(actor) {
     <ol class="attributes-list shapeshifter-renown-list">
       <li class="attributes-header flexrow">
         <span class="attribute-key">Renown</span>
-        <span class="attribute-valueHeader">Boxes</span>
+        <span class="attribute-valueHeader">Tales</span>
       </li>
       ${rows}
     </ol>
@@ -356,7 +364,9 @@ function patchActorPrepareData() {
       }
 
       for (const key of Object.keys(SHAPESHIFTER_RENOWN)) {
-        if (!this.system.werewolf_renown[key]) this.system.werewolf_renown[key] = { value: 0 };
+        if (!this.system.werewolf_renown[key]) this.system.werewolf_renown[key] = { value: 0, temporary: 0 };
+        if (this.system.werewolf_renown[key].value == null) this.system.werewolf_renown[key].value = 0;
+        if (this.system.werewolf_renown[key].temporary == null) this.system.werewolf_renown[key].temporary = 0;
       }
     }
 
@@ -463,11 +473,11 @@ function patchSheetRender() {
         const button = ev.currentTarget;
         const key = button.dataset.renownKey;
         const value = Number(button.dataset.renownValue ?? 0);
-        const current = Number(app.actor.system?.werewolf_renown?.[key]?.value ?? 0);
+        const current = Number(app.actor.system?.werewolf_renown?.[key]?.temporary ?? 0);
         const next = current === value ? 0 : value;
 
         await app.actor.update({
-          [`system.werewolf_renown.${key}.value`]: next
+          [`system.werewolf_renown.${key}.temporary`]: next
         });
       });
 

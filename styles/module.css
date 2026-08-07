@@ -241,8 +241,25 @@
   padding: 0.3rem 0;
 }
 
+.shapeshifter-renown__total {
+  flex: 0 0 4.25rem;
+  min-width: 4.25rem;
+}
+
+.shapeshifter-renown__total input {
+  width: 2.4rem;
+  color: #d8d8d8;
+  font-weight: 700;
+  text-align: center;
+}
+
+.shapeshifter-renown__total .numBtns {
+  display: none;
+}
+
 .shapeshifter-renown__label {
   min-width: 9rem;
+  color: #d8d8d8;
 }
 
 .shapeshifter-renown__boxes {
@@ -258,7 +275,7 @@
   border: 1px solid rgba(28, 27, 26, 0.38);
   border-radius: 0.35rem;
   background: rgba(255, 255, 255, 0.36);
-  color: var(--shapeshifter-accent);
+  color: #f0dce1;
   font-weight: 700;
   line-height: 1;
   display: inline-grid;
@@ -267,8 +284,8 @@
 }
 
 .shapeshifter-renown__box.is-filled {
-  background: rgba(194, 141, 100, 0.42);
-  border-color: rgba(139, 94, 60, 0.75);
+  background: rgba(238, 175, 191, 0.58);
+  border-color: rgba(220, 145, 166, 0.88);
 }
 
 .shapeshifter-myth-facet-table .item-name-wrapper {

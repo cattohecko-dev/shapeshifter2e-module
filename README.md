@@ -1,3 +1,4 @@
+This comment is commemorated for helping me unfuck foundry's module update issue
 # Shapeshifter 2e Template
 
 This module adds a new werewolf-style template choice to the existing `Chronicles of Darkness 2e` character sheet.

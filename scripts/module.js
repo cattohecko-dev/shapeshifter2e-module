@@ -475,15 +475,6 @@ function patchSheetRender() {
           "system.harmony.value": next
         });
       })
-      .on("click.shapeshifterPassion", ".shapeshifter-passion__box", async ev => {
-        ev.preventDefault();
-        if (!app.actor?.isOwner) return;
-
-        const boxValue = Number(ev.currentTarget.dataset.passionBox ?? 0);
-        await app.actor.update({
-          "system.harmony.value": boxValue
-        });
-      })
       .on("change.shapeshifterPassion", "input[name='system.harmony.value']", async ev => {
         if (!app.actor?.isOwner) return;
 

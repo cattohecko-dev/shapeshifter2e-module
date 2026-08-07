@@ -9,8 +9,8 @@
     }
   ],
   "compatibility": {
-    "minimum": "14",
-    "verified": "14",
+    "minimum": "13",
+    "verified": "13",
     "maximum": "14"
   },
   "url": "https://github.com/cattohecko-dev/shapeshifter2e-module",

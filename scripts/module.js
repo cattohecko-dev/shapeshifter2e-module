@@ -121,10 +121,62 @@ const LEGACY_FACET_CATEGORY_TO_NEW = {
   wolf: "excalibur"
 };
 
+const SHAPESHIFTER_FORM_DISPLAY = {
+  Hishu: ["Human", "Human"],
+  Human: ["Human", "Human"],
+  Dalu: ["Half-Myth", "Half-Myth"],
+  "Half-Myth": ["Half-Myth", "Half-Myth"],
+  Gauru: ["Myth", "Myth"],
+  Myth: ["Myth", "Myth"],
+  Urshul: ["Half-Cryptid", "Half-Cryptid"],
+  "Half-Cryptid": ["Half-Cryptid", "Half-Cryptid"],
+  Urhan: ["Cryptid", "Cryptid"],
+  Cryptid: ["Cryptid", "Cryptid"]
+};
+
+const SHAPESHIFTER_FORM_ORDER = ["Human", "Half-Myth", "Myth", "Half-Cryptid", "Cryptid"];
+
 function isShapeshifterWerewolf(actor) {
   return actor?.type === "character"
     && actor?.system?.characterType === "werewolf"
     && actor?.system?.characterVariant === SHAPESHIFTER_VARIANT;
+}
+
+function getSheetScroller(html) {
+  const appShell = html.closest(".window-app, .application");
+  const scroller = appShell.find(".window-content").first();
+  return scroller.length ? scroller : html.parent();
+}
+
+function rememberSheetScroll(app, html) {
+  const scroller = getSheetScroller(html);
+  app._shapeshifterScrollTop = scroller.scrollTop();
+}
+
+function restoreSheetScroll(app, html) {
+  const scrollTop = app._shapeshifterScrollTop;
+  if (!Number.isFinite(scrollTop)) return;
+
+  window.requestAnimationFrame(() => {
+    getSheetScroller(html).scrollTop(scrollTop);
+  });
+}
+
+function getFormDisplay(item) {
+  return SHAPESHIFTER_FORM_DISPLAY[item.name] ?? SHAPESHIFTER_FORM_DISPLAY[item.system?.subname] ?? [item.name, item.system?.subname ?? ""];
+}
+
+function getFormSortIndex(item) {
+  return SHAPESHIFTER_FORM_ORDER.indexOf(getFormDisplay(item)[0]);
+}
+
+function addPlus(value) {
+  return value >= 0 ? `+${value}` : `${value}`;
+}
+
+function translateTraitName(value) {
+  const translated = value.split(".").reduce((object, key) => object?.[key], CONFIG.MTA);
+  return translated ?? value;
 }
 
 function getModuleMythData(actor) {
@@ -150,13 +202,15 @@ function getGlamourValue(actor) {
 }
 
 function getGlamourMax(actor) {
-  const fallback = Number(actor?.system?.essence?.max ?? 10);
+  const mythheart = Math.min(9, Math.max(0, getMythheartValue(actor) - 1));
+  const fallback = Number(CONFIG.MTA?.primalUrge_levels?.[mythheart]?.max_essence ?? actor?.system?.essence?.max ?? 10);
   const value = Number(getMythField(actor, "glamour.max", fallback));
   return Number.isFinite(value) ? value : fallback;
 }
 
 function getGlamourPerTurn(actor) {
-  const fallback = Number(actor?.system?.essence_per_turn ?? 1);
+  const mythheart = Math.min(9, Math.max(0, getMythheartValue(actor) - 1));
+  const fallback = Number(CONFIG.MTA?.primalUrge_levels?.[mythheart]?.essence_per_turn ?? actor?.system?.essence_per_turn ?? 1);
   const value = Number(getMythField(actor, "glamour.perTurn", fallback));
   return Number.isFinite(value) ? value : fallback;
 }
@@ -205,11 +259,13 @@ function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr 
 
 function buildMythheartHtml(actor) {
   const value = getMythheartValue(actor);
+  const checkboxId = `ShapeshifterMythheart${actor.id}`;
 
   return `
     <div class="kInput statBox big shapeshifter-myth__stat shapeshifter-myth__mythheart" data-myth-path="mythheart">
       <h4>
-        <label class="attribute-button shapeshifter-myth__title">Mythheart</label>
+        <input class="attribute-check" id="${checkboxId}" data-trait="shapeshifter_myth.mythheart" data-attributeValue="${value}" data-attributeLabel="Mythheart" type="checkbox" data-dtype="Boolean">
+        <label class="button attribute-button shapeshifter-myth__title" for="${checkboxId}">Mythheart</label>
       </h4>
       <div class="gold-border"></div>
       <div class="split">
@@ -246,7 +302,7 @@ function buildGlamourHtml(actor) {
         </div>
         <span class="delimiter"> / </span>
         <div class="niceNumber shapeshifter-myth__max">
-          <input name="flags.${MODULE_ID}.myth.glamour.max" type="number" value="${max}" data-dtype="Number" readonly>
+          <input type="number" value="${max}" data-dtype="Number" readonly>
         </div>
       </div>
       <div class="description shapeshifter-myth__note">${perTurn} Glamour Per Turn</div>
@@ -324,21 +380,66 @@ function buildRenownBlock(actor) {
   `;
 }
 
+function buildFormsBlockHtml(actor) {
+  const forms = actor.items
+    .filter(item => item.type === "form")
+    .slice()
+    .sort((a, b) => {
+      const orderA = getFormSortIndex(a);
+      const orderB = getFormSortIndex(b);
+      if (orderA !== orderB) return (orderA < 0 ? 99 : orderA) - (orderB < 0 ? 99 : orderB);
+      return (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? "");
+    });
+
+  return `
+    <div class="forms-block shapeshifter-forms-block">
+      ${forms.map(item => {
+        const effects = item.system?.effects ?? [];
+        const description = item.system?.description_short ?? "";
+        const active = item.system?.effectsActive ? "effectActive" : "";
+        const [displayName, displaySubname] = getFormDisplay(item);
+        return `
+          <div class="forms-column ${active}">
+            <div class="top-row">
+              <span class="item-image" style="background-image: url(${item.img})" data-item-id="${item._id}" title="Transform"></span>
+              <span class="item-name">
+                <div>${displayName}</div>
+                <div class="subname">(${displaySubname})</div>
+              </span>
+              <span class="button-panel">
+                <span class="button stoneButton item-edit" data-item-id="${item._id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+                <span class="button stoneButton item-delete" data-item-id="${item._id}" title="${game.i18n.localize("MTA.DeleteItem")}"><i class="fas fa-times-circle"></i></span>
+              </span>
+            </div>
+            <div class="effect-list">
+              ${effects.map(effect => `<div>${addPlus(effect.value)} ${translateTraitName(effect.name)}</div>`).join("")}
+            </div>
+            <div class="description">${description.replaceAll("\n", "<br>")}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function buildMythTabHtml(actor) {
   return `
-    <div class="tab shapeshifter-myth-tab" data-group="primary" data-tab="myth">
-      <div class="shapeshifter-myth-tab__stats">
-        ${buildMythheartHtml(actor)}
-        ${buildGlamourHtml(actor)}
-        ${buildPassionHtml(actor)}
-      </div>
+    <div class="shapeshifter-myth-layout">
+      ${buildFormsBlockHtml(actor)}
 
-      <div class="shapeshifter-myth-tab__renown">
+      <div class="attributes-flexrow shapeshifter-myth-resource-row">
         ${buildRenownBlock(actor)}
+        <div class="flex-col shapeshifter-myth-resource-column">
+          ${buildMythheartHtml(actor)}
+          ${buildGlamourHtml(actor)}
+        </div>
       </div>
 
-      <div class="shapeshifter-myth-tab__facets">
-        ${buildMythFacetTable(actor)}
+      <div class="items-block shapeshifter-myth-tab__facets">
+        <div class="items-table">
+          ${buildMythFacetTable(actor)}
+          ${buildRitesTable(actor)}
+        </div>
       </div>
     </div>
   `;
@@ -418,6 +519,54 @@ function buildMythFacetTable(actor) {
   `;
 }
 
+function buildRitesTable(actor) {
+  const inventory = actor.items
+    .filter(item => item.type === "werewolf_rite")
+    .slice()
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""));
+
+  const rows = inventory.map(item => `
+    <tr class="item-row item" data-item-id="${item._id}">
+      <td class="cell item-name first" data-item-id="${item._id}">
+        <div class="item-name-wrapper">
+          <div class="item-image ${item.system?.effectsActive ? "effectActive" : ""}" style="background-image: url(${item.img})"></div>
+          <span>${item.name}</span>
+        </div>
+      </td>
+      <td class="cell">${item.system?.riteType ?? ""}</td>
+      <td class="cell">${item.system?.level ?? ""}</td>
+      <td class="cell">${item.system?.action ?? ""}</td>
+      <td class="cell">
+        ${item.system?.effects ? `<i class="activeIcon ${item.system?.effectsActive ? "fas" : "far"} fa-dot-circle" title="Effects active" data-item-id="${item._id}"></i>` : ""}
+        <i class="favicon ${item.system?.isFavorite ? "fas" : "far"} fa-star" title="Favorite" data-item-id="${item._id}"></i>
+      </td>
+      <td class="cell edit-delete">
+        <span class="button stoneButton item-edit" data-item-id="${item._id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+        <span class="button stoneButton item-delete" data-item-id="${item._id}" title="${game.i18n.localize("MTA.DeleteItem")}"><i class="fas fa-times-circle"></i></span>
+      </td>
+    </tr>
+  `).join("");
+
+  return `
+    <table class="item-table shapeshifter-rites-table">
+      <thead>
+        <tr class="item-row header">
+          <th class="cell header first">
+            <span class="collapsible button fas fa-minus-square"></span>
+            <span class="sortable button" data-sorttype="werewolf_rite" data-sortproperty="name" data-type="werewolf_rite">Rites<i class="fas fa-sort"></i></span>
+          </th>
+          <th class="cell header">Type</th>
+          <th class="cell header">Level</th>
+          <th class="cell header">Action</th>
+          <th class="cell header"></th>
+          <th class="cell header button item-create" data-type="werewolf_rite">${game.i18n.localize("MTA.ButtonAdd")}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 function patchWerewolfTemplateConfig() {
   const werewolfConfig = CONFIG.MTA?.characterConfig?.character?.werewolf;
   if (!werewolfConfig) {
@@ -427,10 +576,13 @@ function patchWerewolfTemplateConfig() {
 
   werewolfConfig.shapeshifter ??= {
     locale: "Shapeshifter",
-    sheet: ["harmony"],
+    sheet: [],
     virtueName: "MTA.Blood",
     viceName: "MTA.Bone"
   };
+  werewolfConfig.shapeshifter.sheet = [];
+  CONFIG.MTA.shapeshifter_myth ??= {};
+  CONFIG.MTA.shapeshifter_myth.mythheart = "Mythheart";
 }
 
 function patchItemSheetTemplate() {
@@ -487,7 +639,19 @@ function patchActorPrepareData() {
 
   const originalPrepareData = ActorMtA.prototype.prepareData;
   ActorMtA.prototype.prepareData = function (...args) {
-    return originalPrepareData.apply(this, args);
+    const result = originalPrepareData.apply(this, args);
+
+    if (isShapeshifterWerewolf(this)) {
+      const mythheart = getMythheartValue(this);
+      this.system.shapeshifter_myth = {
+        mythheart: {
+          value: mythheart,
+          final: mythheart
+        }
+      };
+    }
+
+    return result;
   };
 
   ActorMtA.prototype._shapeshifterMythDataPatched = true;
@@ -516,37 +680,42 @@ function patchSheetRender() {
   Hooks.on("renderActorSheet", (app, html) => {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
-    const mythNavSelector = '.tabs .item[data-tab="myth"]';
-    const mythPanelSelector = '.tab[data-tab="myth"]';
+    restoreSheetScroll(app, html);
 
-    if (!html.find(mythNavSelector).length) {
-      const giftsItem = html.find('.tabs .item[data-tab="gifts"]').first();
-      const beforeItem = giftsItem.length ? giftsItem : html.find('.tabs .item[data-tab="items"]').first();
-      if (beforeItem.length) {
-        beforeItem.after('<a class="item" data-group="primary" data-tab="myth">Myth</a>');
-      } else {
-        html.find(".tabs").append('<a class="item" data-group="primary" data-tab="myth">Myth</a>');
-      }
+    html.find('.tabs .item[data-tab="myth"], .tab[data-tab="myth"]').remove();
+
+    const giftsNav = html.find('.tabs .item[data-tab="gifts"]').first();
+    if (giftsNav.length) giftsNav.text("Myth");
+
+    const giftsTab = html.find('.tab[data-tab="gifts"]').first();
+    if (giftsTab.length) {
+      giftsTab.addClass("shapeshifter-myth-tab");
+      giftsTab.html(buildMythTabHtml(app.actor));
     }
 
-    if (!html.find(mythPanelSelector).length) {
-      const mythPanel = $(buildMythTabHtml(app.actor));
-      const insertionPoint = html.find('.tab[data-tab="items"]').first();
-      if (insertionPoint.length) {
-        insertionPoint.before(mythPanel);
-      } else {
-        html.find(".sheet-body").append(mythPanel);
-      }
+    const bottomCharaBlock = html.find(".bottomCharaBlock").first();
+    if (bottomCharaBlock.length && !bottomCharaBlock.find(".shapeshifter-passion").length) {
+      bottomCharaBlock.append(buildPassionHtml(app.actor));
     }
 
-    const mythTab = html.find(mythPanelSelector).first();
+    if (!html.find(".tabs .item.active").length) {
+      giftsNav.addClass("active");
+      giftsTab.addClass("active");
+    }
+
+    const mythTab = giftsTab;
     if (!mythTab.length) return;
 
-    mythTab.off(".shapeshifterMyth");
+    html.off(".shapeshifterMyth");
+    html.off(".shapeshifterMythScroll");
 
-    mythTab.on("click.shapeshifterMyth", ".plusBtn, .minusBtn", async ev => {
+    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete", () => rememberSheetScroll(app, html));
+    html.on("change.shapeshifterMythScroll", "input, select, textarea", () => rememberSheetScroll(app, html));
+
+    html.on("click.shapeshifterMyth", ".shapeshifter-passion .plusBtn, .shapeshifter-passion .minusBtn, .shapeshifter-renown__total .plusBtn, .shapeshifter-renown__total .minusBtn, .shapeshifter-myth__stat .plusBtn, .shapeshifter-myth__stat .minusBtn", async ev => {
       ev.preventDefault();
       if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
 
       const button = $(ev.currentTarget);
       const control = button.closest("[data-update-path]");
@@ -566,8 +735,9 @@ function patchSheetRender() {
       await app.actor.update({ [path]: next });
     });
 
-    mythTab.on("change.shapeshifterMyth", "input[type='number']", async ev => {
+    html.on("change.shapeshifterMyth", ".shapeshifter-passion input[type='number'], .shapeshifter-renown__total input[type='number'], .shapeshifter-myth__stat input[type='number']", async ev => {
       if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
 
       const input = ev.currentTarget;
       const path = input.name;
@@ -583,9 +753,10 @@ function patchSheetRender() {
       await app.actor.update({ [path]: next });
     });
 
-    mythTab.on("click.shapeshifterMyth", ".shapeshifter-passion__box", async ev => {
+    html.on("click.shapeshifterMyth", ".shapeshifter-passion__box", async ev => {
       ev.preventDefault();
       if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
 
       const boxIndex = Number(ev.currentTarget.dataset.index ?? 0);
       const current = Math.max(0, Math.trunc(getPassionCheckedBoxes(app.actor)));
@@ -596,9 +767,10 @@ function patchSheetRender() {
       });
     });
 
-    mythTab.on("click.shapeshifterMyth", ".shapeshifter-renown__box", async ev => {
+    html.on("click.shapeshifterMyth", ".shapeshifter-renown__box", async ev => {
       ev.preventDefault();
       if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
 
       const button = ev.currentTarget;
       const key = button.dataset.renownKey;

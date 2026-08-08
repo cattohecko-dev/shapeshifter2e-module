@@ -202,6 +202,9 @@
   justify-content: center;
   gap: 0.45rem;
   margin: 0.05rem auto 0;
+  position: static !important;
+  inset: auto !important;
+  display: inline-flex;
 }
 
 .shapeshifter-passion__total input {
@@ -239,7 +242,7 @@
     url("/systems/mta/ui/rock.jpg") repeat;
   color: #f2d15b;
   font-weight: 700;
-  font-size: 0;
+  font-size: 0.75rem;
   line-height: 1;
   display: inline-grid;
   place-items: center;
@@ -276,6 +279,9 @@
 .shapeshifter-renown__total {
   flex: 0 0 4rem;
   min-width: 4rem;
+  position: static !important;
+  inset: auto !important;
+  display: inline-flex;
 }
 
 .shapeshifter-renown__total input {
@@ -314,7 +320,7 @@
     url("/systems/mta/ui/rock.jpg") repeat;
   color: #f2d15b;
   font-weight: 700;
-  font-size: 0;
+  font-size: 0.75rem;
   line-height: 1;
   display: inline-grid;
   place-items: center;

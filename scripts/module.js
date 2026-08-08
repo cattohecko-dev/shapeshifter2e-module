@@ -154,7 +154,7 @@ function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr 
   const filled = Math.max(0, Math.min(total, Math.trunc(filledCount)));
   return Array.from({ length: total }, (_, index) => {
     const isFilled = index < filled;
-    return `<div class="${baseClass} ${isFilled ? "is-filled" : ""}" data-state="${isFilled ? 1 : 0}" data-index="${index}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}"></div>`;
+    return `<div class="${baseClass} ${isFilled ? "is-filled" : ""}" data-state="${isFilled ? 1 : 0}" data-index="${index}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}">${isFilled ? "x" : ""}</div>`;
   }).join("");
 }
 

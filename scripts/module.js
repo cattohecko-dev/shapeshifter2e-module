@@ -140,8 +140,9 @@ function getPassionValue(actor) {
   return Number.isFinite(value) ? value : 1;
 }
 
-function getPassionMax(actor) {
-  return Number(actor?.system?.harmony?.max ?? 0);
+function getPassionCheckedBoxes(actor) {
+  const checkedBoxes = Number(actor?.flags?.[MODULE_ID]?.sheet?.passionCheckedBoxes ?? 0);
+  return Number.isFinite(checkedBoxes) ? checkedBoxes : 0;
 }
 
 function getPassionPerTurn(actor) {
@@ -149,20 +150,30 @@ function getPassionPerTurn(actor) {
 }
 
 function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr = "data-track-value", extraAttributes = "") {
-  return Array.from({ length: Math.max(0, count) }, (_, index) => {
-    const filled = index < filledCount;
-    return `<div class="${baseClass} ${filled ? "is-filled" : ""}" data-state="${filled ? 1 : 0}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}">${filled ? "x" : ""}</div>`;
+  const total = Math.max(0, Math.trunc(count));
+  const filled = Math.max(0, Math.min(total, Math.trunc(filledCount)));
+  return Array.from({ length: total }, (_, index) => {
+    const isFilled = index < filled;
+    return `<div class="${baseClass} ${isFilled ? "is-filled" : ""}" data-state="${isFilled ? 1 : 0}" data-index="${index}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}"></div>`;
   }).join("");
 }
 
 function buildPassionHtml(actor) {
   const passionValue = getPassionValue(actor);
-  const passionPerTurn = getPassionPerTurn(actor);
   const passionBoxCount = Math.max(0, Math.trunc(passionValue));
-  const passionBoxes = buildTrackerBoxes(passionBoxCount, passionBoxCount, "shapeshifter-passion__box", "Passion", "data-passion-box");
+  const passionChecked = Math.max(0, Math.min(passionBoxCount, Math.trunc(getPassionCheckedBoxes(actor))));
+  const passionPerTurn = getPassionPerTurn(actor);
+  const passionBoxes = buildTrackerBoxes(passionBoxCount, passionChecked, "shapeshifter-passion__box", "Passion", "data-passion-box");
 
   return `
-    <div class="kInput statBox big shapeshifter-passion">
+    <div class="kInput statBox big kMageTracker shapeshifter-passion"
+      data-type="passion"
+      data-name="system.harmony"
+      data-states="max/value"
+      data-max="${passionBoxCount}"
+      data-value="${passionValue}"
+      data-checked-boxes="${passionChecked}"
+      data-initialised="yes">
       <h4>
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
@@ -174,15 +185,15 @@ function buildPassionHtml(actor) {
           <div class="minusBtn">-</div>
         </div>
       </div>
-      <div class="shapeshifter-passion__boxes">${passionBoxes}</div>
-      <div class="description shapeshifter-passion__note">${passionPerTurn} Passion per turn</div>
+      <div class="boxes shapeshifter-passion__boxes">${passionBoxes}</div>
+      <div class="info description shapeshifter-passion__note">${passionPerTurn} Passion per turn</div>
     </div>
   `;
 }
 
 function buildRenownRowHtml(actor, renownKey, label) {
   const totalValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
-  const temporaryValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.temporary ?? 0);
+  const temporaryValue = Math.max(0, Math.min(5, Number(actor?.system?.werewolf_renown?.[renownKey]?.temporary ?? 0)));
   const boxes = buildTrackerBoxes(5, temporaryValue, "shapeshifter-renown__box", label, "data-renown-value", `data-renown-key="${renownKey}"`);
 
   return `
@@ -195,7 +206,7 @@ function buildRenownRowHtml(actor, renownKey, label) {
         </div>
       </div>
       <span class="attribute-button shapeshifter-renown__label">${label}</span>
-      <span class="shapeshifter-renown__boxes">${boxes}</span>
+      <span class="boxes shapeshifter-renown__boxes">${boxes}</span>
       <input type="hidden" name="system.werewolf_renown.${renownKey}.temporary" data-dtype="Number" value="${temporaryValue}">
     </li>
   `;
@@ -388,18 +399,20 @@ function patchActorPrepareData() {
     if (!isShapeshifterWerewolf(this)) return;
 
     const passionValue = getPassionValue(this);
+    const passionBoxCount = Math.max(0, Math.trunc(passionValue));
+    const passionChecked = Math.max(0, Math.min(passionBoxCount, Math.trunc(getPassionCheckedBoxes(this))));
     const general = this.system?.generalModifiers;
 
     this.system.passion = {
       value: passionValue,
-      max: getPassionMax(this),
+      max: passionBoxCount,
       perTurn: getPassionPerTurn(this),
-      checkedBoxes: passionValue,
-      totalBoxes: getPassionMax(this),
-      remainingBoxes: Math.max(0, getPassionMax(this) - passionValue),
+      checkedBoxes: passionChecked,
+      totalBoxes: passionBoxCount,
+      remainingBoxes: Math.max(0, passionBoxCount - passionChecked),
       effectFramework: {
-        checkedBoxes: passionValue,
-        totalBoxes: getPassionMax(this),
+        checkedBoxes: passionChecked,
+        totalBoxes: passionBoxCount,
         affectedSkills: []
       }
     };
@@ -473,6 +486,18 @@ function patchSheetRender() {
 
         await app.actor.update({
           "system.harmony.value": next
+        });
+      })
+      .on("click.shapeshifterPassion", ".shapeshifter-passion__box", async ev => {
+        ev.preventDefault();
+        if (!app.actor?.isOwner) return;
+
+        const boxIndex = Number(ev.currentTarget.dataset.index ?? 0);
+        const current = Math.max(0, Math.trunc(getPassionCheckedBoxes(app.actor)));
+        const next = current === boxIndex + 1 ? 0 : boxIndex + 1;
+
+        await app.actor.update({
+          [`flags.${MODULE_ID}.sheet.passionCheckedBoxes`]: next
         });
       })
       .on("change.shapeshifterPassion", "input[name='system.harmony.value']", async ev => {

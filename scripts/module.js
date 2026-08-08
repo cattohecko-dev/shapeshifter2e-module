@@ -109,14 +109,6 @@ const LEGACY_RENOWN_TO_NEW = {
   cunning: "empathy"
 };
 
-const LEGACY_FORM_RENAMES = {
-  Hishu: { name: "Human", subname: "Human" },
-  Dalu: { name: "Half-Myth", subname: "Half-Myth" },
-  Gauru: { name: "Myth", subname: "Myth" },
-  Urshul: { name: "Half-Cryptid", subname: "Half-Cryptid" },
-  Urhan: { name: "Cryptid", subname: "Cryptid" }
-};
-
 const MYTH_FACET_CATEGORIES = {
   nightmare: "Nightmare Myths",
   wyrd: "Wyrd Myths",
@@ -135,18 +127,71 @@ function isShapeshifterWerewolf(actor) {
     && actor?.system?.characterVariant === SHAPESHIFTER_VARIANT;
 }
 
+function getModuleMythData(actor) {
+  return actor?.flags?.[MODULE_ID]?.myth ?? {};
+}
+
+function getMythField(actor, path, fallback) {
+  const value = foundry.utils.getProperty(getModuleMythData(actor), path);
+  if (value === null || value === undefined || value === "") return fallback;
+  return value;
+}
+
+function getMythheartValue(actor) {
+  const fallback = Number(actor?.system?.harmony?.value ?? 1);
+  const value = Number(getMythField(actor, "mythheart", fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getGlamourValue(actor) {
+  const fallback = Number(actor?.system?.essence?.value ?? 0);
+  const value = Number(getMythField(actor, "glamour.value", fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getGlamourMax(actor) {
+  const fallback = Number(actor?.system?.essence?.max ?? 10);
+  const value = Number(getMythField(actor, "glamour.max", fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getGlamourPerTurn(actor) {
+  const fallback = Number(actor?.system?.essence_per_turn ?? 1);
+  const value = Number(getMythField(actor, "glamour.perTurn", fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
 function getPassionValue(actor) {
-  const value = Number(actor?.system?.harmony?.value);
-  return Number.isFinite(value) ? value : 1;
+  const fallback = Number(actor?.system?.harmony?.value ?? 1);
+  const value = Number(getMythField(actor, "passion.value", fallback));
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function getPassionCheckedBoxes(actor) {
-  const checkedBoxes = Number(actor?.flags?.[MODULE_ID]?.sheet?.passionCheckedBoxes ?? 0);
-  return Number.isFinite(checkedBoxes) ? checkedBoxes : 0;
+  const value = Number(getMythField(actor, "passion.checkedBoxes", 0));
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
 }
 
 function getPassionPerTurn(actor) {
   return Math.ceil(getPassionValue(actor) / 2);
+}
+
+function getRenownValue(actor, key) {
+  const legacyKey = Object.entries(LEGACY_RENOWN_TO_NEW).find(([, newKey]) => newKey === key)?.[0];
+  const fallback = Number(actor?.system?.werewolf_renown?.[key]?.value
+    ?? (legacyKey ? actor?.system?.werewolf_renown?.[legacyKey]?.value : 0)
+    ?? 0);
+  const value = Number(getMythField(actor, `renown.${key}.value`, fallback));
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function getRenownTemporary(actor, key) {
+  const legacyKey = Object.entries(LEGACY_RENOWN_TO_NEW).find(([, newKey]) => newKey === key)?.[0];
+  const fallback = Number(actor?.system?.werewolf_renown?.[key]?.temporary
+    ?? (legacyKey ? actor?.system?.werewolf_renown?.[legacyKey]?.temporary : 0)
+    ?? 0);
+  const value = Number(getMythField(actor, `renown.${key}.temporary`, fallback));
+  return Number.isFinite(value) ? Math.max(0, value) : fallback;
 }
 
 function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr = "data-track-value", extraAttributes = "") {
@@ -156,6 +201,57 @@ function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr 
     const isFilled = index < filled;
     return `<div class="${baseClass} ${isFilled ? "is-filled" : ""}" data-state="${isFilled ? 1 : 0}" data-index="${index}" ${valueAttr}="${index + 1}" ${extraAttributes} aria-label="${ariaPrefix} ${index + 1}">${isFilled ? "x" : ""}</div>`;
   }).join("");
+}
+
+function buildMythheartHtml(actor) {
+  const value = getMythheartValue(actor);
+
+  return `
+    <div class="kInput statBox big shapeshifter-myth__stat shapeshifter-myth__mythheart" data-myth-path="mythheart">
+      <h4>
+        <label class="attribute-button shapeshifter-myth__title">Mythheart</label>
+      </h4>
+      <div class="gold-border"></div>
+      <div class="split">
+        <div class="niceNumber buttonsLeft shapeshifter-myth__number" data-update-path="flags.${MODULE_ID}.myth.mythheart">
+          <input name="flags.${MODULE_ID}.myth.mythheart" type="number" value="${value}" data-dtype="Number" step="1">
+          <div class="numBtns">
+            <div class="plusBtn">+</div>
+            <div class="minusBtn">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildGlamourHtml(actor) {
+  const value = getGlamourValue(actor);
+  const max = getGlamourMax(actor);
+  const perTurn = getGlamourPerTurn(actor);
+
+  return `
+    <div class="kInput statBox big shapeshifter-myth__stat shapeshifter-myth__glamour" data-myth-path="glamour">
+      <h4>
+        <label class="attribute-button shapeshifter-myth__title">Glamour</label>
+      </h4>
+      <div class="gold-border"></div>
+      <div class="split">
+        <div class="niceNumber buttonsLeft shapeshifter-myth__number" data-update-path="flags.${MODULE_ID}.myth.glamour.value" data-clamp-min="0" data-clamp-max="${max}">
+          <input name="flags.${MODULE_ID}.myth.glamour.value" type="number" value="${value}" data-dtype="Number" step="1">
+          <div class="numBtns">
+            <div class="plusBtn">+</div>
+            <div class="minusBtn">-</div>
+          </div>
+        </div>
+        <span class="delimiter"> / </span>
+        <div class="niceNumber shapeshifter-myth__max">
+          <input name="flags.${MODULE_ID}.myth.glamour.max" type="number" value="${max}" data-dtype="Number" readonly>
+        </div>
+      </div>
+      <div class="description shapeshifter-myth__note">${perTurn} Glamour Per Turn</div>
+    </div>
+  `;
 }
 
 function buildPassionHtml(actor) {
@@ -168,7 +264,7 @@ function buildPassionHtml(actor) {
   return `
     <div class="kInput statBox big kMageTracker shapeshifter-passion"
       data-type="passion"
-      data-name="system.harmony"
+      data-name="flags.${MODULE_ID}.myth.passion"
       data-states="max/value"
       data-max="${passionBoxCount}"
       data-value="${passionValue}"
@@ -178,8 +274,8 @@ function buildPassionHtml(actor) {
         <label class="attribute-button shapeshifter-passion__title">Passion</label>
       </h4>
       <div class="gold-border"></div>
-      <div class="niceNumber buttonsLeft shapeshifter-passion__total">
-        <input name="system.harmony.value" type="number" value="${passionValue}" data-dtype="Number" step="1">
+      <div class="niceNumber buttonsLeft shapeshifter-passion__total" data-update-path="flags.${MODULE_ID}.myth.passion.value">
+        <input name="flags.${MODULE_ID}.myth.passion.value" type="number" value="${passionValue}" data-dtype="Number" step="1">
         <div class="numBtns">
           <div class="plusBtn">+</div>
           <div class="minusBtn">-</div>
@@ -192,14 +288,14 @@ function buildPassionHtml(actor) {
 }
 
 function buildRenownRowHtml(actor, renownKey, label) {
-  const totalValue = Number(actor?.system?.werewolf_renown?.[renownKey]?.value ?? 0);
-  const temporaryValue = Math.max(0, Math.min(5, Number(actor?.system?.werewolf_renown?.[renownKey]?.temporary ?? 0)));
+  const totalValue = getRenownValue(actor, renownKey);
+  const temporaryValue = Math.min(5, getRenownTemporary(actor, renownKey));
   const boxes = buildTrackerBoxes(5, temporaryValue, "shapeshifter-renown__box", label, "data-renown-value", `data-renown-key="${renownKey}"`);
 
   return `
     <li class="attribute flexrow shapeshifter-renown__row" data-renown-key="${renownKey}">
-      <div class="niceNumber buttonsLeft shapeshifter-renown__total">
-        <input name="system.werewolf_renown.${renownKey}.value" type="number" value="${totalValue}" data-dtype="Number" min="0" max="5">
+      <div class="niceNumber buttonsLeft shapeshifter-renown__total" data-update-path="flags.${MODULE_ID}.myth.renown.${renownKey}.value" data-clamp-min="0" data-clamp-max="5">
+        <input name="flags.${MODULE_ID}.myth.renown.${renownKey}.value" type="number" value="${totalValue}" data-dtype="Number" min="0" max="5">
         <div class="numBtns">
           <div class="plusBtn">+</div>
           <div class="minusBtn">-</div>
@@ -207,13 +303,13 @@ function buildRenownRowHtml(actor, renownKey, label) {
       </div>
       <span class="attribute-button shapeshifter-renown__label">${label}</span>
       <span class="boxes shapeshifter-renown__boxes">${boxes}</span>
-      <input type="hidden" name="system.werewolf_renown.${renownKey}.temporary" data-dtype="Number" value="${temporaryValue}">
+      <input type="hidden" name="flags.${MODULE_ID}.myth.renown.${renownKey}.temporary" data-dtype="Number" value="${temporaryValue}">
     </li>
   `;
 }
 
 function buildRenownBlock(actor) {
-  const rows = Object.entries(CONFIG.MTA.werewolf_renown)
+  const rows = Object.entries(SHAPESHIFTER_RENOWN)
     .map(([key, label]) => buildRenownRowHtml(actor, key, label))
     .join("");
 
@@ -225,6 +321,26 @@ function buildRenownBlock(actor) {
       </li>
       ${rows}
     </ol>
+  `;
+}
+
+function buildMythTabHtml(actor) {
+  return `
+    <div class="tab shapeshifter-myth-tab" data-group="primary" data-tab="myth">
+      <div class="shapeshifter-myth-tab__stats">
+        ${buildMythheartHtml(actor)}
+        ${buildGlamourHtml(actor)}
+        ${buildPassionHtml(actor)}
+      </div>
+
+      <div class="shapeshifter-myth-tab__renown">
+        ${buildRenownBlock(actor)}
+      </div>
+
+      <div class="shapeshifter-myth-tab__facets">
+        ${buildMythFacetTable(actor)}
+      </div>
+    </div>
   `;
 }
 
@@ -315,9 +431,6 @@ function patchWerewolfTemplateConfig() {
     virtueName: "MTA.Blood",
     viceName: "MTA.Bone"
   };
-
-  CONFIG.MTA.werewolf_renown = { ...SHAPESHIFTER_RENOWN };
-  CONFIG.MTA.mythFacetTypes = { ...MYTH_FACET_CATEGORIES };
 }
 
 function patchItemSheetTemplate() {
@@ -370,57 +483,14 @@ function patchItemPrepareData() {
 }
 
 function patchActorPrepareData() {
-  if (ActorMtA.prototype._shapeshifterPassionPatched) return;
+  if (ActorMtA.prototype._shapeshifterMythDataPatched) return;
 
   const originalPrepareData = ActorMtA.prototype.prepareData;
   ActorMtA.prototype.prepareData = function (...args) {
-    originalPrepareData.apply(this, args);
-
-    if (!this.system) return;
-
-    if (this.type === "character" && this.system.characterType === "werewolf") {
-      this.system.harmony ??= {};
-      if (this.system.harmony.value == null) this.system.harmony.value = 1;
-      this.system.werewolf_renown ??= {};
-
-      for (const [oldKey, newKey] of Object.entries(LEGACY_RENOWN_TO_NEW)) {
-        if (this.system.werewolf_renown[oldKey] && !this.system.werewolf_renown[newKey]) {
-          this.system.werewolf_renown[newKey] = foundry.utils.duplicate(this.system.werewolf_renown[oldKey]);
-        }
-      }
-
-      for (const key of Object.keys(SHAPESHIFTER_RENOWN)) {
-        if (!this.system.werewolf_renown[key]) this.system.werewolf_renown[key] = { value: 0, temporary: 0 };
-        if (this.system.werewolf_renown[key].value == null) this.system.werewolf_renown[key].value = 0;
-        if (this.system.werewolf_renown[key].temporary == null) this.system.werewolf_renown[key].temporary = 0;
-      }
-    }
-
-    if (!isShapeshifterWerewolf(this)) return;
-
-    const passionValue = getPassionValue(this);
-    const passionBoxCount = Math.max(0, Math.trunc(passionValue));
-    const passionChecked = Math.max(0, Math.min(passionBoxCount, Math.trunc(getPassionCheckedBoxes(this))));
-    const general = this.system?.generalModifiers;
-
-    this.system.passion = {
-      value: passionValue,
-      max: passionBoxCount,
-      perTurn: getPassionPerTurn(this),
-      checkedBoxes: passionChecked,
-      totalBoxes: passionBoxCount,
-      remainingBoxes: Math.max(0, passionBoxCount - passionChecked),
-      effectFramework: {
-        checkedBoxes: passionChecked,
-        totalBoxes: passionBoxCount,
-        affectedSkills: []
-      }
-    };
-
-    if (!general?.allDicePools) return;
+    return originalPrepareData.apply(this, args);
   };
 
-  ActorMtA.prototype._shapeshifterPassionPatched = true;
+  ActorMtA.prototype._shapeshifterMythDataPatched = true;
 }
 
 function patchWerewolfForms() {
@@ -441,145 +511,114 @@ function patchWerewolfForms() {
 }
 
 function patchSheetRender() {
-  if (Hooks._shapeshifterPassionRenderPatched) return;
+  if (Hooks._shapeshifterMythRenderPatched) return;
 
   Hooks.on("renderActorSheet", (app, html) => {
     if (!isShapeshifterWerewolf(app.actor)) return;
 
-    const passionBox = html.find(".kInput.statBox.big").filter((_, element) => {
-      const box = $(element);
-      const title = box.find("label.attribute-button").first().text().trim();
-      return box.find("input[name='system.werewolf_traits.harmony.value']").length > 0
-        || box.find("input[name='system.harmony.value']").length > 0
-        || title === "Harmony"
-        || title === "Passion"
-        || title === "Primal Urge";
-    }).first();
+    const mythNavSelector = '.tabs .item[data-tab="myth"]';
+    const mythPanelSelector = '.tab[data-tab="myth"]';
 
-    html.find('.tabs .item[data-tab="gifts"]').text("Myth");
+    if (!html.find(mythNavSelector).length) {
+      const giftsItem = html.find('.tabs .item[data-tab="gifts"]').first();
+      const beforeItem = giftsItem.length ? giftsItem : html.find('.tabs .item[data-tab="items"]').first();
+      if (beforeItem.length) {
+        beforeItem.after('<a class="item" data-group="primary" data-tab="myth">Myth</a>');
+      } else {
+        html.find(".tabs").append('<a class="item" data-group="primary" data-tab="myth">Myth</a>');
+      }
+    }
 
-    html.find(".forms-column .item-name").each((_, element) => {
-      const nameBlock = $(element);
-      const nameEl = nameBlock.children("div").first();
-      const subnameEl = nameBlock.children(".subname").first();
-      const legacy = LEGACY_FORM_RENAMES[nameEl.text().trim()];
-      if (!legacy) return;
+    if (!html.find(mythPanelSelector).length) {
+      const mythPanel = $(buildMythTabHtml(app.actor));
+      const insertionPoint = html.find('.tab[data-tab="items"]').first();
+      if (insertionPoint.length) {
+        insertionPoint.before(mythPanel);
+      } else {
+        html.find(".sheet-body").append(mythPanel);
+      }
+    }
 
-      nameEl.text(legacy.name);
-      if (subnameEl.length) subnameEl.text(`(${legacy.subname})`);
+    const mythTab = html.find(mythPanelSelector).first();
+    if (!mythTab.length) return;
+
+    mythTab.off(".shapeshifterMyth");
+
+    mythTab.on("click.shapeshifterMyth", ".plusBtn, .minusBtn", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+
+      const button = $(ev.currentTarget);
+      const control = button.closest("[data-update-path]");
+      const path = control.data("updatePath");
+      if (!path) return;
+
+      const input = control.find("input[type='number']").first();
+      const current = Number(input.val() ?? 0);
+      const delta = button.hasClass("plusBtn") ? 1 : -1;
+      let next = current + delta;
+
+      const min = control.data("clampMin");
+      const max = control.data("clampMax");
+      if (min !== undefined && min !== null && min !== "") next = Math.max(Number(min), next);
+      if (max !== undefined && max !== null && max !== "") next = Math.min(Number(max), next);
+
+      await app.actor.update({ [path]: next });
     });
 
-    if (passionBox.length) {
-      passionBox.replaceWith(buildPassionHtml(app.actor));
-    }
+    mythTab.on("change.shapeshifterMyth", "input[type='number']", async ev => {
+      if (!app.actor?.isOwner) return;
 
-    const passionTrack = html.find(".shapeshifter-passion").first();
-    passionTrack
-      .off("click.shapeshifterPassion")
-      .on("click.shapeshifterPassion", ".plusBtn, .minusBtn", async ev => {
-        ev.preventDefault();
-        if (!app.actor?.isOwner) return;
+      const input = ev.currentTarget;
+      const path = input.name;
+      if (!path) return;
 
-        const isPlus = $(ev.currentTarget).hasClass("plusBtn");
-        const current = Number(app.actor.system?.harmony?.value ?? 1);
-        const next = current + (isPlus ? 1 : -1);
+      const wrapper = $(input).closest("[data-update-path]");
+      let next = Number(input.value ?? 0);
+      const min = wrapper.data("clampMin");
+      const max = wrapper.data("clampMax");
+      if (min !== undefined && min !== null && min !== "") next = Math.max(Number(min), next);
+      if (max !== undefined && max !== null && max !== "") next = Math.min(Number(max), next);
 
-        await app.actor.update({
-          "system.harmony.value": next
-        });
-      })
-      .on("click.shapeshifterPassion", ".shapeshifter-passion__box", async ev => {
-        ev.preventDefault();
-        if (!app.actor?.isOwner) return;
-
-        const boxIndex = Number(ev.currentTarget.dataset.index ?? 0);
-        const current = Math.max(0, Math.trunc(getPassionCheckedBoxes(app.actor)));
-        const next = current === boxIndex + 1 ? 0 : boxIndex + 1;
-
-        await app.actor.update({
-          [`flags.${MODULE_ID}.sheet.passionCheckedBoxes`]: next
-        });
-      })
-      .on("change.shapeshifterPassion", "input[name='system.harmony.value']", async ev => {
-        if (!app.actor?.isOwner) return;
-
-        const next = Number(ev.currentTarget.value ?? 0);
-        await app.actor.update({
-          "system.harmony.value": next
-        });
-      });
-
-    html.find(".kInput.statBox.big").each((_, element) => {
-      const box = $(element);
-      const hasPrimalUrge = box.text().includes("Primal Urge");
-      const hasEssence = box.text().includes("Essence");
-      const title = box.find("label.attribute-button").first();
-
-      if (hasPrimalUrge) {
-        if (title.length) {
-          title.text(title.text().replace("Primal Urge", "Mythheart"));
-        }
-        box.find("*").addBack().contents().filter((_, node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Primal Urge")).each((_, node) => {
-          node.textContent = node.textContent.replace("Primal Urge", "Mythheart");
-        });
-      }
-
-      if (hasEssence) {
-        if (title.length) {
-          title.text(title.text().replace("Essence", "Glamour"));
-        }
-        box.find("*").addBack().contents().filter((_, node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes("Essence")).each((_, node) => {
-          node.textContent = node.textContent.replace("Essence", "Glamour");
-        });
-
-        const essencePerTurn = Number(app.actor?.system?.essence_per_turn ?? 0);
-        box.find(".description").first().text(`${essencePerTurn} Glamour Per Turn`);
-      }
+      await app.actor.update({ [path]: next });
     });
 
-    const giftsTab = html.find('.tab[data-tab="gifts"]').first();
-    const renownList = giftsTab.find("ol.attributes-list").first();
-    if (renownList.length) {
-      renownList.replaceWith(buildRenownBlock(app.actor));
-    }
+    mythTab.on("click.shapeshifterMyth", ".shapeshifter-passion__box", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
 
-    giftsTab.find(".shapeshifter-renown__box")
-      .off("click.shapeshifterRenown")
-      .on("click.shapeshifterRenown", async ev => {
-        ev.preventDefault();
-        if (!app.actor?.isOwner) return;
+      const boxIndex = Number(ev.currentTarget.dataset.index ?? 0);
+      const current = Math.max(0, Math.trunc(getPassionCheckedBoxes(app.actor)));
+      const next = current === boxIndex + 1 ? 0 : boxIndex + 1;
 
-        const button = ev.currentTarget;
-        const key = button.dataset.renownKey;
-        const value = Number(button.dataset.renownValue ?? 0);
-        const current = Number(app.actor.system?.werewolf_renown?.[key]?.temporary ?? 0);
-        const next = current === value ? 0 : value;
-
-        await app.actor.update({
-          [`system.werewolf_renown.${key}.temporary`]: next
-        });
+      await app.actor.update({
+        [`flags.${MODULE_ID}.myth.passion.checkedBoxes`]: next
       });
+    });
 
-    const facetTable = giftsTab.find("table.item-table").filter((_, element) => {
-      return $(element).find('.item-create[data-type="facet"]').length > 0;
-    }).first();
+    mythTab.on("click.shapeshifterMyth", ".shapeshifter-renown__box", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
 
-    if (facetTable.length) {
-      facetTable.replaceWith(buildMythFacetTable(app.actor));
-    }
+      const button = ev.currentTarget;
+      const key = button.dataset.renownKey;
+      const value = Number(button.dataset.renownValue ?? 0);
+      const current = Number(getMythField(app.actor, `renown.${key}.temporary`, 0));
+      const next = current === value ? 0 : value;
 
-    const mythTable = giftsTab.find(".shapeshifter-myth-facet-table").first();
-    if (!mythTable.length) return;
+      await app.actor.update({
+        [`flags.${MODULE_ID}.myth.renown.${key}.temporary`]: next
+      });
+    });
 
-    mythTable.off(".shapeshifterMyth");
-    mythTable.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
-    mythTable.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
-    mythTable.on("click.shapeshifterMyth", ".item-edit", event => {
+    mythTab.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
+    mythTab.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
+    mythTab.on("click.shapeshifterMyth", ".item-edit", event => {
       const itemId = event.currentTarget.dataset.itemId;
       const item = app.actor.items.get(itemId);
       item?.sheet.render(true);
     });
-    mythTable.on("click.shapeshifterMyth", ".item-delete", ev => {
+    mythTab.on("click.shapeshifterMyth", ".item-delete", ev => {
       const itemId = ev.currentTarget.dataset.itemId;
       if (!itemId) return;
 
@@ -602,10 +641,10 @@ function patchSheetRender() {
         default: "two"
       }).render(true);
     });
-    mythTable.on("click.shapeshifterMyth", ".item-create", event => app._onItemCreate(event));
+    mythTab.on("click.shapeshifterMyth", ".item-create", event => app._onItemCreate(event));
   });
 
-  Hooks._shapeshifterPassionRenderPatched = true;
+  Hooks._shapeshifterMythRenderPatched = true;
 }
 
 Hooks.once("init", () => {

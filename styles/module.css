@@ -380,6 +380,46 @@
     url("/systems/mta/ui/rock.jpg") repeat;
 }
 
+.shapeshifter-myth-tab {
+  display: grid;
+  gap: 1rem;
+}
+
+.shapeshifter-myth-tab__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.shapeshifter-myth-tab__facets {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.shapeshifter-myth-tab .niceNumber {
+  position: static !important;
+}
+
+.shapeshifter-myth__stat {
+  min-height: 11rem;
+}
+
+.shapeshifter-myth__number {
+  display: inline-flex;
+}
+
+.shapeshifter-myth__max {
+  display: inline-flex;
+}
+
+.shapeshifter-myth__note {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(234, 230, 226, 0.82);
+  text-align: center;
+}
+
 .shapeshifter-myth-facet-table .item-name-wrapper {
   align-items: center;
 }
@@ -401,6 +441,10 @@
   .shapeshifter-sheet__hero,
   .shapeshifter-sheet__story,
   .shapeshifter-sheet__meta {
+    grid-template-columns: 1fr;
+  }
+
+  .shapeshifter-myth-tab__stats {
     grid-template-columns: 1fr;
   }
 }

@@ -583,6 +583,7 @@ function patchWerewolfTemplateConfig() {
   werewolfConfig.shapeshifter.sheet = [];
   CONFIG.MTA.shapeshifter_myth ??= {};
   CONFIG.MTA.shapeshifter_myth.mythheart = "Mythheart";
+  CONFIG.MTA.mythFacetTypes = foundry.utils.deepClone(MYTH_FACET_CATEGORIES);
 }
 
 function patchItemSheetTemplate() {

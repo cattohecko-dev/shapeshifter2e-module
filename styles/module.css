@@ -286,6 +286,16 @@
   padding: 0.2rem 0;
 }
 
+.shapeshifter-renown__state {
+  margin-right: 0;
+  line-height: 1.2rem;
+}
+
+.characterSheet .attributes-list li .shapeshifter-renown__state.omen {
+  background: var(--background-input-active);
+  border: var(--border-button);
+}
+
 .shapeshifter-renown__total {
   flex: 0 0 4rem;
   min-width: 4rem;
@@ -452,6 +462,189 @@
   letter-spacing: 0.04em;
 }
 
+.shapeshifter-excalibur-tab {
+  color: #e7ded6;
+}
+
+.shapeshifter-excalibur-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.shapeshifter-excalibur-panel {
+  border: 1px solid rgba(195, 132, 82, 0.55);
+  background:
+    linear-gradient(180deg, rgba(17, 26, 28, 0.88), rgba(30, 17, 23, 0.88)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+}
+
+.shapeshifter-touchstone-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.shapeshifter-touchstone-count {
+  color: rgba(231, 222, 214, 0.78);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.shapeshifter-empty-row {
+  padding: 0.75rem;
+  color: rgba(231, 222, 214, 0.72);
+  text-align: center;
+}
+
+.shapeshifter-touchstone-row {
+  cursor: grab;
+}
+
+.shapeshifter-touchstone-row:active {
+  cursor: grabbing;
+}
+
+.shapeshifter-excalibur-forge {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem;
+}
+
+.shapeshifter-excalibur-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: end;
+  padding-bottom: 0.45rem;
+  border-bottom: 2px ridge rgba(195, 132, 82, 0.85);
+}
+
+.shapeshifter-excalibur-header h3 {
+  margin: 0;
+  color: #f0d8af;
+  font-size: 1.3rem;
+}
+
+.shapeshifter-excalibur-header span {
+  color: rgba(231, 222, 214, 0.72);
+  font-size: 0.85rem;
+}
+
+.shapeshifter-excalibur-controls {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.shapeshifter-excalibur-controls .stoneButton {
+  min-width: 4.5rem;
+  color: #efe1d2;
+  border: 1px solid rgba(195, 132, 82, 0.65);
+  background:
+    linear-gradient(180deg, rgba(70, 42, 27, 0.95), rgba(31, 18, 14, 0.95)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+}
+
+.shapeshifter-excalibur-controls .stoneButton:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.shapeshifter-excalibur-controls .shapeshifter-excalibur-burn.is-burning {
+  color: #2a1208;
+  border-color: rgba(255, 209, 95, 0.95);
+  background:
+    linear-gradient(180deg, rgba(255, 197, 95, 0.98), rgba(185, 63, 36, 0.98)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+  box-shadow: 0 0 0.75rem rgba(255, 128, 62, 0.28);
+}
+
+.shapeshifter-excalibur-fields {
+  display: grid;
+  grid-template-columns: minmax(12rem, 0.8fr) minmax(16rem, 1.2fr);
+  gap: 0.75rem;
+}
+
+.shapeshifter-excalibur-fields label {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  color: #f0d8af;
+  font-weight: 700;
+}
+
+.shapeshifter-excalibur-fields input,
+.shapeshifter-excalibur-fields textarea,
+.shapeshifter-touchstone-sheet textarea {
+  color: #e7ded6;
+  background: rgba(10, 6, 8, 0.7);
+  border: 1px solid rgba(195, 132, 82, 0.55);
+}
+
+.shapeshifter-excalibur-fields textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.shapeshifter-excalibur-dropzone {
+  display: grid;
+  place-items: center;
+  gap: 0.25rem;
+  min-height: 6.5rem;
+  padding: 1rem;
+  color: #eadfd5;
+  border: 2px dashed rgba(220, 145, 166, 0.65);
+  background:
+    linear-gradient(180deg, rgba(51, 20, 30, 0.62), rgba(16, 9, 12, 0.62)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+  text-align: center;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.shapeshifter-excalibur-dropzone.is-hovered {
+  border-color: rgba(242, 209, 91, 0.95);
+  box-shadow: inset 0 0 1rem rgba(242, 209, 91, 0.18), 0 0 0.75rem rgba(220, 145, 166, 0.2);
+}
+
+.shapeshifter-excalibur-dropzone strong {
+  color: #f0d8af;
+  font-size: 1.2rem;
+}
+
+.shapeshifter-excalibur-dropzone span {
+  color: rgba(231, 222, 214, 0.76);
+}
+
+.shapeshifter-excalibur-result {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: flex-end;
+  color: rgba(231, 222, 214, 0.82);
+}
+
+.shapeshifter-excalibur-weapon-name {
+  color: #f0d8af;
+  font-weight: 700;
+}
+
+.shapeshifter-touchstone-sheet .sheet-tabs .item[data-tab="font"] {
+  color: #f0d8af;
+}
+
+.shapeshifter-touchstone-sheet .form-line textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.shapeshifter-touchstone-statmods select {
+  min-width: 15rem;
+}
+
 @media (max-width: 1100px) {
   .shapeshifter-sheet__hero,
   .shapeshifter-sheet__story,
@@ -465,6 +658,10 @@
 
   .shapeshifter-myth-resource-column {
     flex: 1 1 auto;
+    grid-template-columns: 1fr;
+  }
+
+  .shapeshifter-excalibur-fields {
     grid-template-columns: 1fr;
   }
 }

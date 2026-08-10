@@ -5,6 +5,7 @@ import { MtAItemSheet } from "/systems/mta/module/item-sheet.js";
 const MODULE_ID = "shapeshifter2e-module";
 const SHAPESHIFTER_VARIANT = "shapeshifter";
 const MYTH_FACET_TEMPLATE = `modules/${MODULE_ID}/templates/items/myth-facet.html`;
+const TOUCHSTONE_TEMPLATE = `modules/${MODULE_ID}/templates/items/touchstone.html`;
 
 const SHAPESHIFTER_FORMS = [
   {
@@ -115,6 +116,32 @@ const MYTH_FACET_CATEGORIES = {
   excalibur: "Excalibur Myths"
 };
 
+const DEFAULT_TOUCHSTONE_FONT = {
+  model: "",
+  weaponType: "Melee",
+  damage: 0,
+  penetration: 0,
+  initiativeMod: 0,
+  strengthReq: 1,
+  size: 1,
+  availability: 0,
+  special: "",
+  text: ""
+};
+
+const SHAPESHIFTER_MYTHHEART_LEVELS = [
+  { level: 1, statMax: 5, glamourMax: 10, glamourPerTurn: 1, frailties: "One minor" },
+  { level: 2, statMax: 5, glamourMax: 11, glamourPerTurn: 2, frailties: "One minor" },
+  { level: 3, statMax: 5, glamourMax: 12, glamourPerTurn: 3, frailties: "Two minor" },
+  { level: 4, statMax: 5, glamourMax: 13, glamourPerTurn: 4, frailties: "Two minor" },
+  { level: 5, statMax: 5, glamourMax: 15, glamourPerTurn: 5, frailties: "One major, two minor" },
+  { level: 6, statMax: 6, glamourMax: 20, glamourPerTurn: 6, frailties: "One major, two minor" },
+  { level: 7, statMax: 7, glamourMax: 25, glamourPerTurn: 7, frailties: "One major, three minor" },
+  { level: 8, statMax: 8, glamourMax: 30, glamourPerTurn: 8, frailties: "One major, three minor" },
+  { level: 9, statMax: 9, glamourMax: 50, glamourPerTurn: 10, frailties: "Two major, three minor" },
+  { level: 10, statMax: 10, glamourMax: 75, glamourPerTurn: 15, frailties: "Two major, three minor" }
+];
+
 const LEGACY_FACET_CATEGORY_TO_NEW = {
   moon: "nightmare",
   shadow: "wyrd",
@@ -195,6 +222,14 @@ function getMythheartValue(actor) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function getMythheartLevel(actor) {
+  return Math.min(10, Math.max(1, Math.trunc(getMythheartValue(actor))));
+}
+
+function getMythheartRules(actor) {
+  return SHAPESHIFTER_MYTHHEART_LEVELS[getMythheartLevel(actor) - 1] ?? SHAPESHIFTER_MYTHHEART_LEVELS[0];
+}
+
 function getGlamourValue(actor) {
   const fallback = Number(actor?.system?.essence?.value ?? 0);
   const value = Number(getMythField(actor, "glamour.value", fallback));
@@ -202,17 +237,11 @@ function getGlamourValue(actor) {
 }
 
 function getGlamourMax(actor) {
-  const mythheart = Math.min(9, Math.max(0, getMythheartValue(actor) - 1));
-  const fallback = Number(CONFIG.MTA?.primalUrge_levels?.[mythheart]?.max_essence ?? actor?.system?.essence?.max ?? 10);
-  const value = Number(getMythField(actor, "glamour.max", fallback));
-  return Number.isFinite(value) ? value : fallback;
+  return getMythheartRules(actor).glamourMax;
 }
 
 function getGlamourPerTurn(actor) {
-  const mythheart = Math.min(9, Math.max(0, getMythheartValue(actor) - 1));
-  const fallback = Number(CONFIG.MTA?.primalUrge_levels?.[mythheart]?.essence_per_turn ?? actor?.system?.essence_per_turn ?? 1);
-  const value = Number(getMythField(actor, "glamour.perTurn", fallback));
-  return Number.isFinite(value) ? value : fallback;
+  return getMythheartRules(actor).glamourPerTurn;
 }
 
 function getPassionValue(actor) {
@@ -248,6 +277,63 @@ function getRenownTemporary(actor, key) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
 }
 
+function getRenownState(actor, key) {
+  const state = String(getMythField(actor, `renown.${key}.state`, ""));
+  return state === "omen" || state === "tribe" ? state : "";
+}
+
+function escapeHtml(value) {
+  return Handlebars.escapeExpression(value ?? "");
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value).replaceAll('"', "&quot;");
+}
+
+function getTouchstoneData(item) {
+  return item?.getFlag?.(MODULE_ID, "touchstone") ?? item?.flags?.[MODULE_ID]?.touchstone ?? {};
+}
+
+function isTouchstoneItem(item) {
+  return item?.type === "relationship" && getTouchstoneData(item)?.isTouchstone === true;
+}
+
+function getTouchstoneFontData(item) {
+  return {
+    ...DEFAULT_TOUCHSTONE_FONT,
+    ...(getTouchstoneData(item)?.font ?? {})
+  };
+}
+
+function getTouchstoneStatMods(item) {
+  const statMods = getTouchstoneData(item)?.statMods ?? [];
+  return Array.isArray(statMods) ? statMods : Object.values(statMods);
+}
+
+function getTouchstones(actor) {
+  return actor.items
+    .filter(isTouchstoneItem)
+    .slice()
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""));
+}
+
+function getTouchstoneLimit(actor) {
+  return getMythheartLevel(actor);
+}
+
+function getExcaliburData(actor) {
+  return actor?.getFlag?.(MODULE_ID, "excalibur") ?? actor?.flags?.[MODULE_ID]?.excalibur ?? {};
+}
+
+function toNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function nl2br(value) {
+  return escapeHtml(value).replaceAll("\n", "<br>");
+}
+
 function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr = "data-track-value", extraAttributes = "") {
   const total = Math.max(0, Math.trunc(count));
   const filled = Math.max(0, Math.min(total, Math.trunc(filledCount)));
@@ -259,6 +345,7 @@ function buildTrackerBoxes(count, filledCount, baseClass, ariaPrefix, valueAttr 
 
 function buildMythheartHtml(actor) {
   const value = getMythheartValue(actor);
+  const rules = getMythheartRules(actor);
   const checkboxId = `ShapeshifterMythheart${actor.id}`;
 
   return `
@@ -276,6 +363,9 @@ function buildMythheartHtml(actor) {
             <div class="minusBtn">-</div>
           </div>
         </div>
+      </div>
+      <div class="description shapeshifter-myth__note shapeshifter-mythheart__rules">
+        Attribute/Skill Max ${rules.statMax} | Frailties: ${rules.frailties}
       </div>
     </div>
   `;
@@ -346,10 +436,14 @@ function buildPassionHtml(actor) {
 function buildRenownRowHtml(actor, renownKey, label) {
   const totalValue = getRenownValue(actor, renownKey);
   const temporaryValue = Math.min(5, getRenownTemporary(actor, renownKey));
+  const renownState = getRenownState(actor, renownKey);
+  const renownStateLabel = renownState === "omen" ? "O" : renownState === "tribe" ? "T" : "";
+  const renownStateTitle = renownState === "omen" ? "Omen Renown" : renownState === "tribe" ? "Tribe Renown" : "Set Omen or Tribe Renown";
   const boxes = buildTrackerBoxes(5, temporaryValue, "shapeshifter-renown__box", label, "data-renown-value", `data-renown-key="${renownKey}"`);
 
   return `
     <li class="attribute flexrow shapeshifter-renown__row" data-renown-key="${renownKey}">
+      <span class="button renown-state shapeshifter-renown__state ${renownState}" title="${renownStateTitle}" data-renown-key="${renownKey}">${renownStateLabel}</span>
       <div class="niceNumber buttonsLeft shapeshifter-renown__total" data-update-path="flags.${MODULE_ID}.myth.renown.${renownKey}.value" data-clamp-min="0" data-clamp-max="5">
         <input name="flags.${MODULE_ID}.myth.renown.${renownKey}.value" type="number" value="${totalValue}" data-dtype="Number" min="0" max="5">
         <div class="numBtns">
@@ -567,6 +661,282 @@ function buildRitesTable(actor) {
   `;
 }
 
+function buildTouchstoneRow(item) {
+  const font = getTouchstoneFontData(item);
+  const weaponSummary = [
+    font.model || font.weaponType,
+    `Damage ${toNumber(font.damage)}`,
+    `Init ${addPlus(toNumber(font.initiativeMod))}`,
+    `Str ${toNumber(font.strengthReq, 1)}`,
+    `Size ${toNumber(font.size, 1)}`
+  ].join(" | ");
+
+  return `
+    <tr class="item-row item shapeshifter-touchstone-row" data-item-id="${item.id}" draggable="true">
+      <td class="cell item-name first" data-item-id="${item.id}">
+        <div class="item-name-wrapper">
+          <div class="item-image" style="background-image: url(${item.img})"></div>
+          <span>${escapeHtml(item.name)}</span>
+        </div>
+      </td>
+      <td class="cell">${escapeHtml(item.system?.impression ?? "Average")}</td>
+      <td class="cell">${toNumber(item.system?.doors?.value)} / ${toNumber(item.system?.doors?.max, 1)}</td>
+      <td class="cell">${escapeHtml(weaponSummary)}</td>
+      <td class="cell edit-delete">
+        <span class="button stoneButton item-edit" data-item-id="${item.id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+        <span class="button stoneButton item-delete" data-item-id="${item.id}" title="${game.i18n.localize("MTA.DeleteItem")}"><i class="fas fa-times-circle"></i></span>
+      </td>
+    </tr>
+  `;
+}
+
+function buildTouchstonesTable(actor) {
+  const touchstones = getTouchstones(actor);
+  const limit = getTouchstoneLimit(actor);
+  const rows = touchstones.map(buildTouchstoneRow).join("");
+
+  return `
+    <table class="item-table shapeshifter-touchstones-table">
+      <thead>
+        <tr class="item-row header">
+          <th class="cell header first">
+            <span class="collapsible button fas fa-minus-square"></span>
+            <span>Touchstones</span>
+          </th>
+          <th class="cell header">Impression</th>
+          <th class="cell header">Camaraderie</th>
+          <th class="cell header">Font</th>
+          <th class="cell header shapeshifter-touchstone-actions">
+            <span class="shapeshifter-touchstone-count">${touchstones.length} / ${limit}</span>
+            <span class="button stoneButton shapeshifter-touchstone-create" title="Add Touchstone"><i class="fas fa-plus"></i></span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td class="cell first shapeshifter-empty-row" colspan="5">No Touchstones yet. Use + to create one.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+function buildExcaliburTabHtml(actor) {
+  const excalibur = getExcaliburData(actor);
+  const touchstone = excalibur.touchstoneId ? actor.items.get(excalibur.touchstoneId) : null;
+  const weapon = excalibur.weaponId ? actor.items.get(excalibur.weaponId) : null;
+  const isBurning = excalibur.burning === true;
+
+  return `
+    <div class="shapeshifter-excalibur-layout">
+      <section class="shapeshifter-excalibur-panel">
+        ${buildTouchstonesTable(actor)}
+      </section>
+
+      <section class="shapeshifter-excalibur-panel shapeshifter-excalibur-forge">
+        <header class="shapeshifter-excalibur-header">
+          <h3>Excalibur</h3>
+          <div class="shapeshifter-excalibur-controls">
+            <span>Drop one Touchstone here to draw its weapon.</span>
+            <button type="button" class="stoneButton shapeshifter-excalibur-sheathe" ${touchstone ? "" : "disabled"}>Sheathe</button>
+            <button type="button" class="stoneButton shapeshifter-excalibur-burn ${isBurning ? "is-burning" : ""}" ${touchstone ? "" : "disabled"}>${isBurning ? "Burning" : "Burn"}</button>
+          </div>
+        </header>
+
+        <div class="shapeshifter-excalibur-fields">
+          <label>
+            <span>Excalibur Name</span>
+            <input class="shapeshifter-excalibur-field" name="flags.${MODULE_ID}.excalibur.name" type="text" value="${escapeAttribute(excalibur.name ?? "")}" placeholder="Name the weapon">
+          </label>
+          <label>
+            <span>Appearance</span>
+            <textarea class="shapeshifter-excalibur-field" name="flags.${MODULE_ID}.excalibur.appearance" placeholder="What does this Excalibur look like?">${escapeHtml(excalibur.appearance ?? "")}</textarea>
+          </label>
+        </div>
+
+        <div class="shapeshifter-excalibur-dropzone" data-drop-zone="touchstone">
+          <strong>${touchstone ? escapeHtml(touchstone.name) : "Drop Touchstone"}</strong>
+          <span>${touchstone ? `This Touchstone is currently shaping the Excalibur.${isBurning ? " It is burning bright." : ""}` : "Drag a Touchstone row here."}</span>
+        </div>
+
+        <div class="shapeshifter-excalibur-result">
+          <span>Generated Weapon:</span>
+          ${weapon ? `
+            <span class="shapeshifter-excalibur-weapon-name">${escapeHtml(weapon.name)}</span>
+            <span class="button stoneButton item-edit" data-item-id="${weapon.id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+          ` : "<span>None yet.</span>"}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+async function createTouchstone(actor) {
+  const limit = getTouchstoneLimit(actor);
+  if (getTouchstones(actor).length >= limit) {
+    ui.notifications.warn(`Mythheart ${getMythheartLevel(actor)} allows ${limit} Touchstone${limit === 1 ? "" : "s"}.`);
+    return null;
+  }
+
+  const created = await actor.createEmbeddedDocuments("Item", [{
+    name: "Touchstone",
+    type: "relationship",
+    img: CONFIG.MTA.placeholders?.get("relationship") ?? "systems/mta/icons/placeholders/Relationship.svg",
+    system: {
+      impression: "Average",
+      doors: { value: 0, max: 1 },
+      penalty: 0,
+      description: ""
+    },
+    flags: {
+      [MODULE_ID]: {
+        touchstone: {
+          isTouchstone: true,
+          font: foundry.utils.deepClone(DEFAULT_TOUCHSTONE_FONT),
+          statMods: []
+        }
+      }
+    }
+  }]);
+
+  return created?.[0];
+}
+
+async function clearExcalibur(actor, { deleteTouchstone = false } = {}) {
+  const excalibur = getExcaliburData(actor);
+  const deleteIds = [];
+
+  if (excalibur.weaponId && actor.items.get(excalibur.weaponId)) {
+    deleteIds.push(excalibur.weaponId);
+  }
+  if (deleteTouchstone && excalibur.touchstoneId && actor.items.get(excalibur.touchstoneId)) {
+    deleteIds.push(excalibur.touchstoneId);
+  }
+
+  if (deleteIds.length) await actor.deleteEmbeddedDocuments("Item", deleteIds);
+  await actor.unsetFlag(MODULE_ID, "excalibur");
+}
+
+async function toggleExcaliburBurn(actor) {
+  const excalibur = getExcaliburData(actor);
+  const touchstone = excalibur.touchstoneId ? actor.items.get(excalibur.touchstoneId) : null;
+  if (!touchstone) return;
+
+  if (excalibur.burning === true) {
+    const confirmed = await foundry.appv1.api.Dialog.wait({
+      title: "Burn Touchstone",
+      content: `<p>Is ${escapeHtml(touchstone.name)} ready to be removed from this character sheet?</p>`,
+      buttons: {
+        yes: {
+          icon: '<i class="fas fa-fire"></i>',
+          label: "Remove Touchstone",
+          callback: () => true
+        },
+        no: {
+          label: "Keep Burning",
+          callback: () => false
+        }
+      },
+      default: "no",
+      close: () => false
+    });
+
+    if (confirmed) await clearExcalibur(actor, { deleteTouchstone: true });
+    return;
+  }
+
+  await actor.update({ [`flags.${MODULE_ID}.excalibur.burning`]: true });
+  await createOrUpdateExcaliburWeapon(actor, touchstone);
+}
+
+function buildExcaliburDescription(actor, touchstone) {
+  const excalibur = getExcaliburData(actor);
+  const font = getTouchstoneFontData(touchstone);
+  const pieces = [];
+
+  if (excalibur.burning) pieces.push("<h2>Burning</h2><p>This Excalibur is burning its Touchstone.</p>");
+  if (excalibur.appearance) pieces.push(`<h2>Appearance</h2><p>${nl2br(excalibur.appearance)}</p>`);
+  if (font.model) pieces.push(`<h2>Weapon Model</h2><p>${escapeHtml(font.model)}</p>`);
+  if (font.text) pieces.push(`<h2>Font</h2><p>${nl2br(font.text)}</p>`);
+  if (font.special) pieces.push(`<h2>Special</h2><p>${nl2br(font.special)}</p>`);
+  if (touchstone.system?.description) pieces.push(`<h2>Touchstone</h2>${touchstone.system.description}`);
+
+  return pieces.join("");
+}
+
+async function createOrUpdateExcaliburWeapon(actor, touchstone) {
+  if (!actor?.isOwner || !isTouchstoneItem(touchstone)) return null;
+
+  const excalibur = getExcaliburData(actor);
+  const font = getTouchstoneFontData(touchstone);
+  const burnMultiplier = excalibur.burning === true ? 2 : 1;
+  const statMods = getTouchstoneStatMods(touchstone)
+    .filter(mod => mod?.name)
+    .map(mod => ({
+      name: mod.name,
+      value: toNumber(mod.value) * burnMultiplier,
+      overFive: true
+    }));
+  const weaponName = excalibur.name?.trim() || (font.model ? `${touchstone.name} ${font.model}` : `${touchstone.name} Excalibur`);
+  const weaponData = {
+    name: weaponName,
+    img: CONFIG.MTA.placeholders?.get("melee") ?? "systems/mta/icons/placeholders/Melee.svg",
+    system: {
+      weaponType: font.weaponType || "Melee",
+      damage: toNumber(font.damage) * burnMultiplier,
+      penetration: toNumber(font.penetration) * burnMultiplier,
+      initiativeMod: toNumber(font.initiativeMod) * burnMultiplier,
+      strengthReq: toNumber(font.strengthReq, 1),
+      size: toNumber(font.size, 1),
+      availability: toNumber(font.availability),
+      damageType: "lethal",
+      applyDefense: true,
+      effects: statMods,
+      effectsActive: statMods.length > 0,
+      description: buildExcaliburDescription(actor, touchstone)
+    },
+    flags: {
+      [MODULE_ID]: {
+        excaliburWeapon: {
+          isExcalibur: true,
+          sourceTouchstoneId: touchstone.id
+        }
+      }
+    }
+  };
+
+  let weapon = excalibur.weaponId ? actor.items.get(excalibur.weaponId) : null;
+  weapon ??= actor.items.find(item => item.type === "melee" && item.getFlag(MODULE_ID, "excaliburWeapon.isExcalibur"));
+
+  if (weapon) {
+    await weapon.update(weaponData);
+  } else {
+    [weapon] = await actor.createEmbeddedDocuments("Item", [{ ...weaponData, type: "melee" }]);
+  }
+
+  await actor.update({
+    [`flags.${MODULE_ID}.excalibur.touchstoneId`]: touchstone.id,
+    [`flags.${MODULE_ID}.excalibur.weaponId`]: weapon.id
+  });
+
+  return weapon;
+}
+
+async function getDroppedItem(event, actor) {
+  const dataTransfer = event.originalEvent?.dataTransfer ?? event.dataTransfer;
+  let data = {};
+
+  try {
+    data = JSON.parse(dataTransfer?.getData("text/plain") || "{}");
+  } catch {
+    data = {};
+  }
+
+  if (data.uuid) return fromUuid(data.uuid);
+  if (data.id) return actor.items.get(data.id);
+  if (data._id) return actor.items.get(data._id);
+  if (data.data?._id) return actor.items.get(data.data._id);
+  return null;
+}
+
 function patchWerewolfTemplateConfig() {
   const werewolfConfig = CONFIG.MTA?.characterConfig?.character?.werewolf;
   if (!werewolfConfig) {
@@ -595,9 +965,58 @@ function patchItemSheetTemplate() {
     enumerable: true,
     get() {
       if (this.item?.type === "facet") return MYTH_FACET_TEMPLATE;
+      if (isTouchstoneItem(this.item)) return TOUCHSTONE_TEMPLATE;
       return originalTemplate ? originalTemplate.call(this) : "systems/mta/templates/items/item.html";
     }
   });
+
+  const originalGetData = MtAItemSheet.prototype.getData;
+  MtAItemSheet.prototype.getData = async function (...args) {
+    const sheetData = await originalGetData.apply(this, args);
+    if (isTouchstoneItem(this.item)) {
+      const touchstone = getTouchstoneData(this.item);
+      sheetData.shapeshifterTouchstone = {
+        ...touchstone,
+        font: {
+          ...DEFAULT_TOUCHSTONE_FONT,
+          ...(touchstone.font ?? {})
+        },
+        statMods: Array.isArray(touchstone.statMods) ? touchstone.statMods : Object.values(touchstone.statMods ?? {})
+      };
+    }
+    return sheetData;
+  };
+
+  const originalActivateListeners = MtAItemSheet.prototype.activateListeners;
+  MtAItemSheet.prototype.activateListeners = function (html) {
+    originalActivateListeners.call(this, html);
+    if (!isTouchstoneItem(this.item) || !this.options.editable) return;
+
+    html.find(".shapeshifter-touchstone-stat-add").click(async event => {
+      event.preventDefault();
+      const statMods = getTouchstoneStatMods(this.item);
+      statMods.push({ name: "attributes_physical.strength", value: 0 });
+      await this.item.update({ [`flags.${MODULE_ID}.touchstone.statMods`]: statMods });
+    });
+
+    html.find(".shapeshifter-touchstone-stat-remove").click(async event => {
+      event.preventDefault();
+      const index = Number(event.currentTarget.dataset.index);
+      const statMods = getTouchstoneStatMods(this.item);
+      statMods.splice(index, 1);
+      await this.item.update({ [`flags.${MODULE_ID}.touchstone.statMods`]: statMods });
+    });
+  };
+
+  const originalUpdateObject = MtAItemSheet.prototype._updateObject;
+  MtAItemSheet.prototype._updateObject = async function (event, formData) {
+    const expandedData = formData.system ? formData : foundry.utils.expandObject(formData);
+    const touchstone = expandedData.flags?.[MODULE_ID]?.touchstone;
+    if (touchstone?.statMods && !Array.isArray(touchstone.statMods)) {
+      touchstone.statMods = Object.values(touchstone.statMods);
+    }
+    return originalUpdateObject.call(this, event, expandedData);
+  };
 
   MtAItemSheet.prototype._shapeshifterMythTemplatePatched = true;
 }
@@ -608,6 +1027,12 @@ function patchItemPrepareData() {
   const originalPrepareData = ItemMtA.prototype.prepareData;
   ItemMtA.prototype.prepareData = function (...args) {
     originalPrepareData.apply(this, args);
+
+    if (isTouchstoneItem(this)) {
+      const touchstone = getTouchstoneData(this);
+      touchstone.font ??= foundry.utils.deepClone(DEFAULT_TOUCHSTONE_FONT);
+      touchstone.statMods ??= [];
+    }
 
     if (this.type !== "facet") return;
 
@@ -644,10 +1069,15 @@ function patchActorPrepareData() {
 
     if (isShapeshifterWerewolf(this)) {
       const mythheart = getMythheartValue(this);
+      const rules = getMythheartRules(this);
       this.system.shapeshifter_myth = {
         mythheart: {
           value: mythheart,
-          final: mythheart
+          final: mythheart,
+          statMax: rules.statMax,
+          glamourMax: rules.glamourMax,
+          glamourPerTurn: rules.glamourPerTurn,
+          frailties: rules.frailties
         }
       };
     }
@@ -656,6 +1086,35 @@ function patchActorPrepareData() {
   };
 
   ActorMtA.prototype._shapeshifterMythDataPatched = true;
+}
+
+function patchActorTraitMaximums() {
+  if (ActorMtA.prototype._shapeshifterMythheartMaximumPatched) return;
+
+  const originalGetTraitMaximum = ActorMtA.prototype.getTraitMaximum;
+  ActorMtA.prototype.getTraitMaximum = function (...args) {
+    if (isShapeshifterWerewolf(this)) {
+      return getMythheartRules(this).statMax;
+    }
+
+    return originalGetTraitMaximum.apply(this, args);
+  };
+
+  const originalCalculateAndSetMaxResource = ActorMtA.prototype.calculateAndSetMaxResource;
+  ActorMtA.prototype.calculateAndSetMaxResource = function (...args) {
+    if (isShapeshifterWerewolf(this)) {
+      const rules = getMythheartRules(this);
+      return this.update({
+        "system.essence.max": rules.glamourMax,
+        [`flags.${MODULE_ID}.myth.glamour.max`]: rules.glamourMax,
+        [`flags.${MODULE_ID}.myth.glamour.perTurn`]: rules.glamourPerTurn
+      });
+    }
+
+    return originalCalculateAndSetMaxResource.apply(this, args);
+  };
+
+  ActorMtA.prototype._shapeshifterMythheartMaximumPatched = true;
 }
 
 function patchWerewolfForms() {
@@ -694,9 +1153,34 @@ function patchSheetRender() {
       giftsTab.html(buildMythTabHtml(app.actor));
     }
 
+    let excaliburNav = html.find('.tabs .item[data-tab="excalibur"]').first();
+    if (!excaliburNav.length && giftsNav.length) {
+      giftsNav.after('<a class="item" data-tab="excalibur">Excalibur</a>');
+      excaliburNav = html.find('.tabs .item[data-tab="excalibur"]').first();
+    }
+
+    let excaliburTab = html.find('.tab[data-tab="excalibur"]').first();
+    if (!excaliburTab.length && giftsTab.length) {
+      giftsTab.after('<div class="tab shapeshifter-excalibur-tab" data-tab="excalibur"></div>');
+      excaliburTab = html.find('.tab[data-tab="excalibur"]').first();
+    }
+    if (excaliburTab.length) {
+      excaliburTab.addClass("shapeshifter-excalibur-tab");
+      excaliburTab.html(buildExcaliburTabHtml(app.actor));
+    }
+
     const bottomCharaBlock = html.find(".bottomCharaBlock").first();
     if (bottomCharaBlock.length && !bottomCharaBlock.find(".shapeshifter-passion").length) {
       bottomCharaBlock.append(buildPassionHtml(app.actor));
+    }
+
+    if (app._shapeshifterActiveTab === "excalibur" && excaliburNav.length && excaliburTab.length) {
+      const tabs = excaliburNav.closest(".tabs");
+      const sheetBody = excaliburTab.parent();
+      tabs.children(".item").removeClass("active");
+      excaliburNav.addClass("active");
+      sheetBody.children(".tab").removeClass("active");
+      excaliburTab.addClass("active");
     }
 
     if (!html.find(".tabs .item.active").length) {
@@ -705,13 +1189,31 @@ function patchSheetRender() {
     }
 
     const mythTab = giftsTab;
-    if (!mythTab.length) return;
+    const customTabs = mythTab.add(excaliburTab);
+    if (!mythTab.length && !excaliburTab.length) return;
 
     html.off(".shapeshifterMyth");
     html.off(".shapeshifterMythScroll");
 
-    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete", () => rememberSheetScroll(app, html));
+    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete, .shapeshifter-touchstone-create, .shapeshifter-excalibur-sheathe, .shapeshifter-excalibur-burn", () => rememberSheetScroll(app, html));
     html.on("change.shapeshifterMythScroll", "input, select, textarea", () => rememberSheetScroll(app, html));
+
+    html.on("click.shapeshifterMyth", '.tabs .item[data-tab="excalibur"]', ev => {
+      ev.preventDefault();
+      app._shapeshifterActiveTab = "excalibur";
+      const nav = $(ev.currentTarget);
+      const tabs = nav.closest(".tabs");
+      const sheetBody = excaliburTab.parent();
+      tabs.children(".item").removeClass("active");
+      nav.addClass("active");
+      sheetBody.children(".tab").removeClass("active");
+      excaliburTab.addClass("active");
+      restoreSheetScroll(app, html);
+    });
+
+    html.on("click.shapeshifterMyth", '.tabs .item[data-tab]:not([data-tab="excalibur"])', ev => {
+      app._shapeshifterActiveTab = ev.currentTarget.dataset.tab;
+    });
 
     html.on("click.shapeshifterMyth", ".shapeshifter-passion .plusBtn, .shapeshifter-passion .minusBtn, .shapeshifter-renown__total .plusBtn, .shapeshifter-renown__total .minusBtn, .shapeshifter-myth__stat .plusBtn, .shapeshifter-myth__stat .minusBtn", async ev => {
       ev.preventDefault();
@@ -784,14 +1286,98 @@ function patchSheetRender() {
       });
     });
 
-    mythTab.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
-    mythTab.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
-    mythTab.on("click.shapeshifterMyth", ".item-edit", event => {
+    html.on("click.shapeshifterMyth", ".shapeshifter-renown__state", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const key = ev.currentTarget.dataset.renownKey;
+      const current = getRenownState(app.actor, key);
+      const next = current === "omen" ? "tribe" : current === "tribe" ? "" : "omen";
+
+      await app.actor.update({
+        [`flags.${MODULE_ID}.myth.renown.${key}.state`]: next
+      });
+    });
+
+    excaliburTab.on("click.shapeshifterMyth", ".shapeshifter-touchstone-create", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      const item = await createTouchstone(app.actor);
+      item?.sheet.render(true);
+    });
+
+    excaliburTab.on("click.shapeshifterMyth", ".shapeshifter-excalibur-sheathe", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      await clearExcalibur(app.actor);
+    });
+
+    excaliburTab.on("click.shapeshifterMyth", ".shapeshifter-excalibur-burn", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      await toggleExcaliburBurn(app.actor);
+    });
+
+    excaliburTab.on("change.shapeshifterMyth", ".shapeshifter-excalibur-field", async ev => {
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      await app.actor.update({ [ev.currentTarget.name]: ev.currentTarget.value });
+
+      const excalibur = getExcaliburData(app.actor);
+      const touchstone = excalibur.touchstoneId ? app.actor.items.get(excalibur.touchstoneId) : null;
+      if (touchstone) await createOrUpdateExcaliburWeapon(app.actor, touchstone);
+    });
+
+    excaliburTab.on("dragstart.shapeshifterMyth", ".shapeshifter-touchstone-row", ev => {
+      const itemId = ev.currentTarget.dataset.itemId;
+      const item = app.actor.items.get(itemId);
+      if (!item) return;
+
+      ev.originalEvent.dataTransfer.setData("text/plain", JSON.stringify({
+        type: "Item",
+        uuid: item.uuid,
+        id: item.id
+      }));
+    });
+
+    excaliburTab.on("dragover.shapeshifterMyth", ".shapeshifter-excalibur-dropzone", ev => {
+      ev.preventDefault();
+      ev.currentTarget.classList.add("is-hovered");
+    });
+
+    excaliburTab.on("dragleave.shapeshifterMyth", ".shapeshifter-excalibur-dropzone", ev => {
+      ev.currentTarget.classList.remove("is-hovered");
+    });
+
+    excaliburTab.on("drop.shapeshifterMyth", ".shapeshifter-excalibur-dropzone", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      ev.currentTarget.classList.remove("is-hovered");
+
+      const item = await getDroppedItem(ev, app.actor);
+      if (!isTouchstoneItem(item) || item.parent?.id !== app.actor.id) {
+        ui.notifications.warn("Drop one of this character's Touchstones here.");
+        return;
+      }
+
+      await app.actor.update({ [`flags.${MODULE_ID}.excalibur.burning`]: false });
+      await createOrUpdateExcaliburWeapon(app.actor, item);
+      ui.notifications.info(`${item.name} shaped the Excalibur.`);
+    });
+
+    customTabs.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
+    customTabs.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
+    customTabs.on("click.shapeshifterMyth", ".item-edit", event => {
       const itemId = event.currentTarget.dataset.itemId;
       const item = app.actor.items.get(itemId);
       item?.sheet.render(true);
     });
-    mythTab.on("click.shapeshifterMyth", ".item-delete", ev => {
+    customTabs.on("click.shapeshifterMyth", ".item-delete", ev => {
       const itemId = ev.currentTarget.dataset.itemId;
       if (!itemId) return;
 
@@ -820,12 +1406,32 @@ function patchSheetRender() {
   Hooks._shapeshifterMythRenderPatched = true;
 }
 
+function patchExcaliburSync() {
+  if (Hooks._shapeshifterExcaliburSyncPatched) return;
+
+  Hooks.on("updateItem", async item => {
+    if (!isTouchstoneItem(item)) return;
+
+    const actor = item.parent;
+    if (!isShapeshifterWerewolf(actor)) return;
+
+    const excalibur = getExcaliburData(actor);
+    if (excalibur.touchstoneId !== item.id) return;
+
+    await createOrUpdateExcaliburWeapon(actor, item);
+  });
+
+  Hooks._shapeshifterExcaliburSyncPatched = true;
+}
+
 Hooks.once("init", () => {
   patchWerewolfTemplateConfig();
   patchItemSheetTemplate();
   patchItemPrepareData();
   patchActorPrepareData();
+  patchActorTraitMaximums();
   patchWerewolfForms();
   patchSheetRender();
+  patchExcaliburSync();
 });
 

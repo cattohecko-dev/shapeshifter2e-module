@@ -1,0 +1,118 @@
+<form class="{{cssClass}} flexcol shapeshifter-touchstone-sheet" autocomplete="off">
+  <header class="sheet-header flexrow">
+    <img class="profile" src="{{item.img}}" data-edit="img" title="{{item.name}}"/>
+
+    <div class="header-details flexrow">
+      <h1 class="charname">
+        <input name="name" type="text" value="{{item.name}}" placeholder="Touchstone Name" />
+      </h1>
+      <div class="item-subtitle">
+        <h4 class="item-type">Touchstone</h4>
+        <span class="item-status"></span>
+      </div>
+    </div>
+  </header>
+  <div class="gold-border"></div>
+
+  <nav class="sheet-tabs tabs" data-group="primary">
+    <a class="item" data-tab="traits">{{localize "MTA.Traits"}}</a>
+    <a class="item" data-tab="description">{{localize "MTA.Description"}}</a>
+    <a class="item" data-tab="font">Font</a>
+  </nav>
+
+  <section class="sheet-body">
+    <div class="tab traits" data-group="primary" data-tab="traits">
+      <div class="item-stat-block padded">
+        <div class="form-line">
+          <label>Impression</label>
+          <select name="system.impression">
+            {{#select system.impression}}
+            {{#each config.impressions}}
+            <option value="{{this}}">{{this}}</option>
+            {{/each}}
+            {{/select}}
+          </select>
+        </div>
+
+        <div class="form-line">
+          <label>Camaraderie</label>
+          <span>
+            <input class="range-input" name="system.doors.value" type="number" data-dtype="Number" value="{{system.doors.value}}" />
+            /
+            <input class="range-input" name="system.doors.max" type="number" data-dtype="Number" value="{{system.doors.max}}" />
+          </span>
+        </div>
+
+        <div class="form-line attributeList shapeshifter-touchstone-statmods">
+          <label class="wide">Stat Modifications</label>
+          <span class="stoneButton shapeshifter-touchstone-stat-add">+</span>
+          {{#each shapeshifterTouchstone.statMods as |mod index|}}
+          <span>
+            <select name="flags.shapeshifter2e-module.touchstone.statMods.{{index}}.name">
+              {{#select mod.name}}
+              {{#each @root.all_traits as |group|}}
+              {{#each group.list}}
+              <option value="{{@key}}">{{this}}</option>
+              {{/each}}
+              {{/each}}
+              {{/select}}
+            </select>
+            <input name="flags.shapeshifter2e-module.touchstone.statMods.{{index}}.value" type="number" data-dtype="Number" value="{{mod.value}}" />
+          </span>
+          <span class="stoneButton shapeshifter-touchstone-stat-remove" data-index="{{index}}">-</span>
+          {{/each}}
+        </div>
+      </div>
+    </div>
+
+    <div class="tab" data-group="primary" data-tab="description">
+      {{editor enrichedDescription target="system.description" button=true owner=owner editable=editable}}
+    </div>
+
+    <div class="tab" data-group="primary" data-tab="font">
+      <div class="item-stat-block padded">
+        <div class="form-line">
+          <label>Weapon Model</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.model" type="text" value="{{shapeshifterTouchstone.font.model}}" data-koptions="Sap/Brass Knuckles/Baton/Crowbar/Tire Iron/Chain/Shield (small)/Shield (large)/Knife/Rapier/Machete/Hatchet/Fire Axe/Chainsaw/Stake/Spear/Stun gun (melee)" />
+        </div>
+
+        <div class="form-line">
+          <label>Weapon Type</label>
+          <select name="flags.shapeshifter2e-module.touchstone.font.weaponType">
+            {{#select shapeshifterTouchstone.font.weaponType}}
+            {{#each config.meleeTypes}}
+            <option value="{{this}}">{{this}}</option>
+            {{/each}}
+            {{/select}}
+          </select>
+        </div>
+
+        <div class="form-line attributeList">
+          <label class="wide">Weapon Stats</label>
+          <label>Damage</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.damage" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.damage}}" />
+          <label>Penetration</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.penetration" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.penetration}}" />
+          <label>Initiative</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.initiativeMod" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.initiativeMod}}" />
+          <label>Strength</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.strengthReq" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.strengthReq}}" />
+          <label>Size</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.size" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.size}}" />
+          <label>Availability</label>
+          <input name="flags.shapeshifter2e-module.touchstone.font.availability" type="number" data-dtype="Number" value="{{shapeshifterTouchstone.font.availability}}" />
+        </div>
+
+        <div class="form-line">
+          <label>Special</label>
+          <textarea name="flags.shapeshifter2e-module.touchstone.font.special" placeholder="Stun, concealed, two-handed, etc.">{{shapeshifterTouchstone.font.special}}</textarea>
+        </div>
+
+        <div class="form-line">
+          <label>Font</label>
+          <textarea name="flags.shapeshifter2e-module.touchstone.font.text" placeholder="What mythic font does this Touchstone provide?">{{shapeshifterTouchstone.font.text}}</textarea>
+        </div>
+      </div>
+    </div>
+  </section>
+</form>

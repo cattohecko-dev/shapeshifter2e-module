@@ -30,6 +30,19 @@
       "path": "lang/en.json"
     }
   ],
+  "packs": [
+    {
+      "name": "shapeshifter-basics",
+      "label": "Shapeshifter Basics",
+      "path": "./packs/shapeshifter-basics.db",
+      "type": "Item",
+      "system": "mta",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      }
+    }
+  ],
   "esmodules": [
     "scripts/module.js"
   ],

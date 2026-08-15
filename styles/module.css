@@ -462,6 +462,96 @@
   letter-spacing: 0.04em;
 }
 
+.shapeshifter-traits-tab,
+.shapeshifter-persona-tab {
+  color: #e7ded6;
+}
+
+.shapeshifter-traits-layout,
+.shapeshifter-persona-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.shapeshifter-traits-panel {
+  border: 1px solid rgba(195, 132, 82, 0.55);
+  background:
+    linear-gradient(180deg, rgba(17, 26, 28, 0.88), rgba(30, 17, 23, 0.88)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+}
+
+.shapeshifter-section-title {
+  margin: 0 0 0.55rem;
+  color: #f0d8af;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.shapeshifter-traits-panel .form-line label,
+.shapeshifter-record-grid label span {
+  color: #f0d8af;
+  font-weight: 700;
+}
+
+.shapeshifter-traits-field,
+.shapeshifter-record-grid textarea {
+  color: #e7ded6;
+  background: rgba(10, 6, 8, 0.7);
+  border: 1px solid rgba(195, 132, 82, 0.55);
+}
+
+.shapeshifter-traits-field::placeholder {
+  color: rgba(231, 222, 214, 0.48);
+}
+
+.shapeshifter-traits-panel textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+
+.shapeshifter-traits-description {
+  min-height: 9rem !important;
+}
+
+.shapeshifter-relationships-table {
+  border: 1px solid rgba(195, 132, 82, 0.55);
+  background:
+    linear-gradient(180deg, rgba(17, 26, 28, 0.88), rgba(30, 17, 23, 0.88)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+}
+
+.shapeshifter-relationship-actions {
+  display: flex;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.shapeshifter-relationship-actions .stoneButton {
+  white-space: nowrap;
+}
+
+.shapeshifter-persona-core {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.shapeshifter-record-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.shapeshifter-record-grid label {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.shapeshifter-record-grid textarea {
+  min-height: 9rem;
+}
+
 .shapeshifter-excalibur-tab {
   color: #e7ded6;
 }
@@ -662,6 +752,10 @@
   }
 
   .shapeshifter-excalibur-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .shapeshifter-record-grid {
     grid-template-columns: 1fr;
   }
 }

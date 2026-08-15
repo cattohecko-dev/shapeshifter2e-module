@@ -6,6 +6,7 @@ const MODULE_ID = "shapeshifter2e-module";
 const SHAPESHIFTER_VARIANT = "shapeshifter";
 const MYTH_FACET_TEMPLATE = `modules/${MODULE_ID}/templates/items/myth-facet.html`;
 const TOUCHSTONE_TEMPLATE = `modules/${MODULE_ID}/templates/items/touchstone.html`;
+const LAMB_TEMPLATE = `modules/${MODULE_ID}/templates/items/lamb.html`;
 
 const SHAPESHIFTER_FORMS = [
   {
@@ -298,6 +299,10 @@ function isTouchstoneItem(item) {
   return item?.type === "relationship" && getTouchstoneData(item)?.isTouchstone === true;
 }
 
+function isLambItem(item) {
+  return item?.type === "relationship" && item?.getFlag?.(MODULE_ID, "lamb.isLamb") === true;
+}
+
 function getTouchstoneFontData(item) {
   return {
     ...DEFAULT_TOUCHSTONE_FONT,
@@ -313,6 +318,17 @@ function getTouchstoneStatMods(item) {
 function getTouchstones(actor) {
   return actor.items
     .filter(isTouchstoneItem)
+    .slice()
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""));
+}
+
+function getShapeshifterTraitsData(actor) {
+  return actor?.getFlag?.(MODULE_ID, "traits") ?? actor?.flags?.[MODULE_ID]?.traits ?? {};
+}
+
+function getShapeshifterRelationships(actor) {
+  return actor.items
+    .filter(item => item.type === "relationship" && !isTouchstoneItem(item))
     .slice()
     .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""));
 }
@@ -535,6 +551,151 @@ function buildMythTabHtml(actor) {
           ${buildRitesTable(actor)}
         </div>
       </div>
+    </div>
+  `;
+}
+
+function buildShapeshifterRelationshipRow(item) {
+  const kind = isLambItem(item) ? "Lamb" : "Relationship";
+
+  return `
+    <tr class="item-row item" data-item-id="${item.id}">
+      <td class="cell item-name first" data-item-id="${item.id}">
+        <div class="item-name-wrapper">
+          <div class="item-image" style="background-image: url(${item.img})"></div>
+          <span>${escapeHtml(item.name)}</span>
+        </div>
+      </td>
+      <td class="cell">${kind}</td>
+      <td class="cell">${escapeHtml(item.system?.impression ?? "Average")}</td>
+      <td class="cell">${toNumber(item.system?.doors?.value)} / ${toNumber(item.system?.doors?.max, 1)}</td>
+      <td class="cell">${toNumber(item.system?.penalty)}</td>
+      <td class="cell edit-delete">
+        <span class="button stoneButton item-edit" data-item-id="${item.id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+        <span class="button stoneButton item-delete" data-item-id="${item.id}" title="${game.i18n.localize("MTA.DeleteItem")}"><i class="fas fa-times-circle"></i></span>
+      </td>
+    </tr>
+  `;
+}
+
+function buildShapeshifterRelationshipsTable(actor) {
+  const rows = getShapeshifterRelationships(actor).map(buildShapeshifterRelationshipRow).join("");
+
+  return `
+    <table class="item-table shapeshifter-relationships-table">
+      <thead>
+        <tr class="item-row header">
+          <th class="cell header first">
+            <span class="collapsible button fas fa-minus-square"></span>
+            <span>Relationships and Lambs</span>
+          </th>
+          <th class="cell header">Type</th>
+          <th class="cell header">Impression</th>
+          <th class="cell header">Doors</th>
+          <th class="cell header">Penalty</th>
+          <th class="cell header shapeshifter-relationship-actions">
+            <span class="button stoneButton shapeshifter-relationship-create" title="Add Relationship">+ Relationship</span>
+            <span class="button stoneButton shapeshifter-lamb-create" title="Add Lamb">+ Lamb</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || `<tr><td class="cell first shapeshifter-empty-row" colspan="6">No Relationships or Lambs yet.</td></tr>`}
+      </tbody>
+    </table>
+  `;
+}
+
+function buildShapeshifterTraitsTabHtml(actor) {
+  const traits = getShapeshifterTraitsData(actor);
+
+  return `
+    <div class="shapeshifter-traits-layout">
+      <section class="item-stat-block shapeshifter-traits-panel">
+        <h3 class="shapeshifter-section-title">Anchors</h3>
+        <div class="form-line">
+          <label>Waking</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.anchors.waking" type="text" value="${escapeAttribute(traits.anchors?.waking ?? "")}">
+        </div>
+        <div class="form-line">
+          <label>Dreaming</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.anchors.dreaming" type="text" value="${escapeAttribute(traits.anchors?.dreaming ?? "")}">
+        </div>
+      </section>
+
+      ${buildShapeshifterRelationshipsTable(actor)}
+
+      <section class="item-stat-block shapeshifter-traits-panel">
+        <div class="form-line">
+          <label>Age</label>
+          <input class="shapeshifter-traits-field" name="system.age" type="number" data-dtype="Number" value="${toNumber(actor.system?.age)}">
+        </div>
+        <div class="form-line">
+          <label>Pronouns</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.pronouns" type="text" value="${escapeAttribute(traits.pronouns ?? "")}">
+        </div>
+        <div class="form-line">
+          <label>Aspirations</label>
+          <textarea class="shapeshifter-traits-field" name="system.aspirations" placeholder="Aspirations">${escapeHtml(actor.system?.aspirations ?? "")}</textarea>
+        </div>
+      </section>
+
+      <section class="item-stat-block shapeshifter-traits-panel">
+        <div class="form-line">
+          <label>Notes</label>
+          <textarea class="shapeshifter-traits-field" name="system.notes" placeholder="Notes">${escapeHtml(actor.system?.notes ?? "")}</textarea>
+        </div>
+        <div class="form-line">
+          <label>Description</label>
+          <textarea class="shapeshifter-traits-field shapeshifter-traits-description" name="system.description" placeholder="Description">${escapeHtml(actor.system?.description ?? "")}</textarea>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function buildShapeshifterPersonaTabHtml(actor) {
+  const traits = getShapeshifterTraitsData(actor);
+  const persona = traits.persona ?? {};
+
+  return `
+    <div class="shapeshifter-persona-layout">
+      <section class="item-stat-block shapeshifter-traits-panel shapeshifter-persona-core">
+        <div class="form-line">
+          <label>Omen</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.omen" type="text" value="${escapeAttribute(persona.omen ?? "")}">
+        </div>
+        <div class="form-line">
+          <label>Table</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.table" type="text" value="${escapeAttribute(persona.table ?? "")}">
+        </div>
+        <div class="form-line">
+          <label>Philosophy</label>
+          <input class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.philosophy" type="text" value="${escapeAttribute(persona.philosophy ?? "")}">
+        </div>
+      </section>
+
+      <section class="item-stat-block shapeshifter-traits-panel shapeshifter-persona-records">
+        <h3 class="shapeshifter-section-title">Records</h3>
+        <div class="shapeshifter-record-grid">
+          <label>
+            <span>Frailties</span>
+            <textarea class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.frailties">${escapeHtml(persona.frailties ?? "")}</textarea>
+          </label>
+          <label>
+            <span>Triggers</span>
+            <textarea class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.triggers">${escapeHtml(persona.triggers ?? "")}</textarea>
+          </label>
+          <label>
+            <span>Fixations</span>
+            <textarea class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.fixations">${escapeHtml(persona.fixations ?? "")}</textarea>
+          </label>
+          <label>
+            <span>Omen Benefit</span>
+            <textarea class="shapeshifter-traits-field" name="flags.${MODULE_ID}.traits.persona.omenBenefit">${escapeHtml(persona.omenBenefit ?? "")}</textarea>
+          </label>
+        </div>
+      </section>
     </div>
   `;
 }
@@ -800,6 +961,31 @@ async function createTouchstone(actor) {
   return created?.[0];
 }
 
+async function createShapeshifterRelationship(actor, { lamb = false } = {}) {
+  const itemData = {
+    name: lamb ? "Lamb" : "Relationship",
+    type: "relationship",
+    img: CONFIG.MTA.placeholders?.get("relationship") ?? "systems/mta/icons/placeholders/Relationship.svg",
+    system: {
+      impression: "Average",
+      doors: { value: 0, max: 1 },
+      penalty: 0,
+      description: ""
+    }
+  };
+
+  if (lamb) {
+    itemData.flags = {
+      [MODULE_ID]: {
+        lamb: { isLamb: true }
+      }
+    };
+  }
+
+  const created = await actor.createEmbeddedDocuments("Item", [itemData]);
+  return created?.[0];
+}
+
 async function clearExcalibur(actor, { deleteTouchstone = false } = {}) {
   const excalibur = getExcaliburData(actor);
   const deleteIds = [];
@@ -966,6 +1152,7 @@ function patchItemSheetTemplate() {
     get() {
       if (this.item?.type === "facet") return MYTH_FACET_TEMPLATE;
       if (isTouchstoneItem(this.item)) return TOUCHSTONE_TEMPLATE;
+      if (isLambItem(this.item)) return LAMB_TEMPLATE;
       return originalTemplate ? originalTemplate.call(this) : "systems/mta/templates/items/item.html";
     }
   });
@@ -1169,18 +1356,37 @@ function patchSheetRender() {
       excaliburTab.html(buildExcaliburTabHtml(app.actor));
     }
 
+    const descriptionTab = html.find('.tab[data-tab="description"]').first();
+    if (descriptionTab.length) {
+      descriptionTab.addClass("shapeshifter-traits-tab");
+      descriptionTab.html(buildShapeshifterTraitsTabHtml(app.actor));
+    }
+
+    const werewolfPersonaNav = html.find('.tabs .item[data-tab="werewolfPersona"]').first();
+    if (werewolfPersonaNav.length) werewolfPersonaNav.text("Shapeshifter Traits");
+
+    const werewolfPersonaTab = html.find('.tab[data-tab="werewolfPersona"]').first();
+    if (werewolfPersonaTab.length) {
+      werewolfPersonaTab.addClass("shapeshifter-persona-tab");
+      werewolfPersonaTab.html(buildShapeshifterPersonaTabHtml(app.actor));
+    }
+
     const bottomCharaBlock = html.find(".bottomCharaBlock").first();
     if (bottomCharaBlock.length && !bottomCharaBlock.find(".shapeshifter-passion").length) {
       bottomCharaBlock.append(buildPassionHtml(app.actor));
     }
 
-    if (app._shapeshifterActiveTab === "excalibur" && excaliburNav.length && excaliburTab.length) {
-      const tabs = excaliburNav.closest(".tabs");
-      const sheetBody = excaliburTab.parent();
-      tabs.children(".item").removeClass("active");
-      excaliburNav.addClass("active");
-      sheetBody.children(".tab").removeClass("active");
-      excaliburTab.addClass("active");
+    if (app._shapeshifterActiveTab) {
+      const activeNav = html.find(`.tabs .item[data-tab="${app._shapeshifterActiveTab}"]`).first();
+      const activeTab = html.find(`.tab[data-tab="${app._shapeshifterActiveTab}"]`).first();
+      if (activeNav.length && activeTab.length) {
+        const tabs = activeNav.closest(".tabs");
+        const sheetBody = activeTab.parent();
+        tabs.children(".item").removeClass("active");
+        activeNav.addClass("active");
+        sheetBody.children(".tab").removeClass("active");
+        activeTab.addClass("active");
+      }
     }
 
     if (!html.find(".tabs .item.active").length) {
@@ -1189,13 +1395,13 @@ function patchSheetRender() {
     }
 
     const mythTab = giftsTab;
-    const customTabs = mythTab.add(excaliburTab);
-    if (!mythTab.length && !excaliburTab.length) return;
+    const customTabs = mythTab.add(excaliburTab).add(descriptionTab).add(werewolfPersonaTab);
+    if (!customTabs.length) return;
 
     html.off(".shapeshifterMyth");
     html.off(".shapeshifterMythScroll");
 
-    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete, .shapeshifter-touchstone-create, .shapeshifter-excalibur-sheathe, .shapeshifter-excalibur-burn", () => rememberSheetScroll(app, html));
+    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete, .shapeshifter-touchstone-create, .shapeshifter-relationship-create, .shapeshifter-lamb-create, .shapeshifter-excalibur-sheathe, .shapeshifter-excalibur-burn", () => rememberSheetScroll(app, html));
     html.on("change.shapeshifterMythScroll", "input, select, textarea", () => rememberSheetScroll(app, html));
 
     html.on("click.shapeshifterMyth", '.tabs .item[data-tab="excalibur"]', ev => {
@@ -1368,6 +1574,33 @@ function patchSheetRender() {
       await app.actor.update({ [`flags.${MODULE_ID}.excalibur.burning`]: false });
       await createOrUpdateExcaliburWeapon(app.actor, item);
       ui.notifications.info(`${item.name} shaped the Excalibur.`);
+    });
+
+    html.on("change.shapeshifterMyth", ".shapeshifter-traits-field", async ev => {
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const input = ev.currentTarget;
+      if (!input.name) return;
+
+      const value = input.type === "number" ? toNumber(input.value) : input.value;
+      await app.actor.update({ [input.name]: value });
+    });
+
+    descriptionTab.on("click.shapeshifterMyth", ".shapeshifter-relationship-create", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      const item = await createShapeshifterRelationship(app.actor);
+      item?.sheet.render(true);
+    });
+
+    descriptionTab.on("click.shapeshifterMyth", ".shapeshifter-lamb-create", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+      const item = await createShapeshifterRelationship(app.actor, { lamb: true });
+      item?.sheet.render(true);
     });
 
     customTabs.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));

@@ -1603,8 +1603,27 @@ function patchSheetRender() {
       item?.sheet.render(true);
     });
 
-    customTabs.on("click.shapeshifterMyth", ".item-image", event => app._onItemRoll(event));
-    customTabs.on("contextmenu.shapeshifterMyth", ".item-image", event => app._onItemRoll(event, true));
+    mythTab.on("click.shapeshifterMyth", ".shapeshifter-forms-block .item-image", async event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const itemId = event.currentTarget.dataset.itemId;
+      const item = app.actor.items.get(itemId);
+      if (!item || item.type !== "form") return;
+
+      await app.actor.werewolfTransform(item);
+    });
+
+    customTabs.on("click.shapeshifterMyth", ".item-image", event => {
+      if ($(event.currentTarget).closest(".shapeshifter-forms-block").length) return;
+      app._onItemRoll(event);
+    });
+    customTabs.on("contextmenu.shapeshifterMyth", ".item-image", event => {
+      if ($(event.currentTarget).closest(".shapeshifter-forms-block").length) return;
+      app._onItemRoll(event, true);
+    });
     customTabs.on("click.shapeshifterMyth", ".item-edit", event => {
       const itemId = event.currentTarget.dataset.itemId;
       const item = app.actor.items.get(itemId);

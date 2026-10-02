@@ -117,6 +117,18 @@ const MYTH_FACET_CATEGORIES = {
   excalibur: "Excalibur Myths"
 };
 
+const SHAPESHIFTER_DICE_TRAITS = {
+  mythheart: "Mythheart",
+  glamour: "Glamour",
+  passion: "Passion",
+  "renown.competence": "Competence",
+  "renown.guardianship": "Guardianship",
+  "renown.civility": "Civility",
+  "renown.integrity": "Integrity",
+  "renown.empathy": "Empathy",
+  "renown.magnanimity": "Magnanimity"
+};
+
 const DEFAULT_TOUCHSTONE_FONT = {
   model: "",
   weaponType: "Melee",
@@ -549,6 +561,7 @@ function buildMythTabHtml(actor) {
         <div class="items-table">
           ${buildMythFacetTable(actor)}
           ${buildRitesTable(actor)}
+          ${buildPledgesTable(actor)}
         </div>
       </div>
     </div>
@@ -808,13 +821,52 @@ function buildRitesTable(actor) {
         <tr class="item-row header">
           <th class="cell header first">
             <span class="collapsible button fas fa-minus-square"></span>
-            <span class="sortable button" data-sorttype="werewolf_rite" data-sortproperty="name" data-type="werewolf_rite">Rites<i class="fas fa-sort"></i></span>
+            <span class="sortable button" data-sorttype="werewolf_rite" data-sortproperty="name" data-type="werewolf_rite">Goblin Traditions<i class="fas fa-sort"></i></span>
           </th>
           <th class="cell header">Type</th>
           <th class="cell header">Level</th>
           <th class="cell header">Action</th>
           <th class="cell header"></th>
           <th class="cell header button item-create" data-type="werewolf_rite">${game.i18n.localize("MTA.ButtonAdd")}</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function buildPledgesTable(actor) {
+  const inventory = actor.items
+    .filter(item => item.type === "pledge")
+    .slice()
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0) || (a.name ?? "").localeCompare(b.name ?? ""));
+
+  const rows = inventory.map(item => `
+    <tr class="item-row item" data-item-id="${item._id}">
+      <td class="cell item-name first" data-item-id="${item._id}">
+        <div class="item-name-wrapper">
+          <div class="item-image" style="background-image: url(${item.img})"></div>
+          <span>${escapeHtml(item.name)}</span>
+        </div>
+      </td>
+      <td class="cell">${escapeHtml(item.system?.type ?? "")}</td>
+      <td class="cell edit-delete">
+        <span class="button stoneButton item-edit" data-item-id="${item._id}" title="${game.i18n.localize("MTA.EditItem")}"><i class="fas fa-edit"></i></span>
+        <span class="button stoneButton item-delete" data-item-id="${item._id}" title="${game.i18n.localize("MTA.DeleteItem")}"><i class="fas fa-times-circle"></i></span>
+      </td>
+    </tr>
+  `).join("");
+
+  return `
+    <table class="item-table shapeshifter-pledges-table">
+      <thead>
+        <tr class="item-row header">
+          <th class="cell header first">
+            <span class="collapsible button fas fa-minus-square"></span>
+            <span class="sortable button" data-sorttype="pledge" data-sortproperty="name" data-type="pledge">Pledges<i class="fas fa-sort"></i></span>
+          </th>
+          <th class="cell header sortable button" data-sorttype="pledge" data-sortproperty="system.type">Type<i class="fas fa-sort"></i></th>
+          <th class="cell header button item-create" data-type="pledge">${game.i18n.localize("MTA.ButtonAdd")}</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -1048,6 +1100,42 @@ function buildExcaliburDescription(actor, touchstone) {
   return pieces.join("");
 }
 
+function renderTableSkillCheckboxes(actor, html) {
+  const attributesTab = html.find('.tab[data-tab="attributes"]').first();
+  if (!attributesTab.length) return;
+
+  attributesTab.find(".attributes-list").each((_, listElement) => {
+    const list = $(listElement);
+    const skillRows = list.find(".rollableInput").filter((__, rowElement) => {
+      const traitName = $(rowElement).find(".attribute-check[data-trait]").first().data("trait");
+      return typeof traitName === "string" && traitName.startsWith("skills_");
+    });
+    if (!skillRows.length) return;
+
+    const header = list.children(".attributes-header.flexrow").not(".major").first();
+    const firstHeader = header.children(".attribute-key").first();
+    if (firstHeader.text().trim() === game.i18n.localize("MTA.Rote")) {
+      firstHeader.text("Table").addClass("shapeshifter-table-skill-header");
+    } else if (!header.find(".shapeshifter-table-skill-header").length) {
+      header.prepend('<span class="attribute-key shapeshifter-table-skill-header">Table</span>');
+    }
+
+    skillRows.each((__, rowElement) => {
+      const row = $(rowElement);
+      const traitName = row.find(".attribute-check[data-trait]").first().data("trait");
+      if (!traitName || row.find(`input[name="system.${traitName}.isRote"]`).length) return;
+
+      const isChecked = foundry.utils.getProperty(actor.system, `${traitName}.isRote`) === true;
+      row.children("span").first().prepend(`
+        <label class="checkBox shapeshifter-table-skill-checkbox" title="Table Skill">
+          <input data-dtype="Boolean" name="system.${traitName}.isRote" type="checkbox" ${isChecked ? "checked" : ""}>
+          <span></span>
+        </label>
+      `);
+    });
+  });
+}
+
 async function createOrUpdateExcaliburWeapon(actor, touchstone) {
   if (!actor?.isOwner || !isTouchstoneItem(touchstone)) return null;
 
@@ -1132,13 +1220,18 @@ function patchWerewolfTemplateConfig() {
 
   werewolfConfig.shapeshifter ??= {
     locale: "Shapeshifter",
-    sheet: [],
+    sheet: ["roteSkills"],
     virtueName: "MTA.Blood",
     viceName: "MTA.Bone"
   };
-  werewolfConfig.shapeshifter.sheet = [];
+  werewolfConfig.shapeshifter.sheet = ["roteSkills"];
   CONFIG.MTA.shapeshifter_myth ??= {};
-  CONFIG.MTA.shapeshifter_myth.mythheart = "Mythheart";
+  Object.assign(CONFIG.MTA.shapeshifter_myth, SHAPESHIFTER_DICE_TRAITS);
+  CONFIG.MTA.all_traits ??= {};
+  CONFIG.MTA.all_traits.shapeshifter_traits = {
+    name: "Shapeshifter Traits",
+    list: ["shapeshifter_myth"]
+  };
   CONFIG.MTA.mythFacetTypes = foundry.utils.deepClone(MYTH_FACET_CATEGORIES);
 }
 
@@ -1170,6 +1263,9 @@ function patchItemSheetTemplate() {
         },
         statMods: Array.isArray(touchstone.statMods) ? touchstone.statMods : Object.values(touchstone.statMods ?? {})
       };
+    }
+    if (this.actor && !isShapeshifterWerewolf(this.actor)) {
+      delete sheetData.all_traits?.shapeshifter_traits;
     }
     return sheetData;
   };
@@ -1256,7 +1352,13 @@ function patchActorPrepareData() {
 
     if (isShapeshifterWerewolf(this)) {
       const mythheart = getMythheartValue(this);
+      const glamour = getGlamourValue(this);
+      const passion = getPassionValue(this);
       const rules = getMythheartRules(this);
+      const renown = Object.fromEntries(Object.keys(SHAPESHIFTER_RENOWN).map(key => {
+        const value = getRenownValue(this, key);
+        return [key, { value, final: value }];
+      }));
       this.system.shapeshifter_myth = {
         mythheart: {
           value: mythheart,
@@ -1265,7 +1367,10 @@ function patchActorPrepareData() {
           glamourMax: rules.glamourMax,
           glamourPerTurn: rules.glamourPerTurn,
           frailties: rules.frailties
-        }
+        },
+        glamour: { value: glamour, final: glamour },
+        passion: { value: passion, final: passion },
+        renown
       };
     }
 
@@ -1394,6 +1499,8 @@ function patchSheetRender() {
       giftsTab.addClass("active");
     }
 
+    renderTableSkillCheckboxes(app.actor, html);
+
     const mythTab = giftsTab;
     const customTabs = mythTab.add(excaliburTab).add(descriptionTab).add(werewolfPersonaTab);
     if (!customTabs.length) return;
@@ -1462,18 +1569,25 @@ function patchSheetRender() {
       await app.actor.update({ [path]: next });
     });
 
-    html.on("click.shapeshifterMyth", ".shapeshifter-passion__box", async ev => {
+    html.on("pointerdown.shapeshifterMyth", ".shapeshifter-passion__box", async ev => {
       ev.preventDefault();
       if (!app.actor?.isOwner) return;
       rememberSheetScroll(app, html);
 
-      const boxIndex = Number(ev.currentTarget.dataset.index ?? 0);
+      const mouseButton = ev.originalEvent?.button ?? ev.button ?? 0;
+      const max = Math.max(0, Math.trunc(getPassionValue(app.actor)));
       const current = Math.max(0, Math.trunc(getPassionCheckedBoxes(app.actor)));
-      const next = current === boxIndex + 1 ? 0 : boxIndex + 1;
+      const next = mouseButton === 2
+        ? Math.max(0, current - 1)
+        : Math.min(max, current + 1);
 
       await app.actor.update({
         [`flags.${MODULE_ID}.myth.passion.checkedBoxes`]: next
       });
+    });
+
+    html.on("contextmenu.shapeshifterMyth", ".shapeshifter-passion__box", ev => {
+      ev.preventDefault();
     });
 
     html.on("click.shapeshifterMyth", ".shapeshifter-renown__box", async ev => {

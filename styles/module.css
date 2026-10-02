@@ -241,30 +241,66 @@
 
 .shapeshifter-passion__box {
   flex-shrink: 0;
+  position: relative;
   width: 1rem;
   height: 1rem;
   margin: 0;
-  border: 2px ridge rgba(220, 145, 166, 0.75);
+  border: 2px ridge rgba(213, 102, 144, 0.88);
   border-radius: 0.05rem;
   box-sizing: content-box;
   background:
-    linear-gradient(180deg, rgba(91, 37, 53, 0.92), rgba(43, 18, 28, 0.92)),
+    linear-gradient(180deg, rgba(191, 83, 128, 0.96), rgba(105, 37, 70, 0.96)),
     url("/systems/mta/ui/rock.jpg") repeat;
-  color: #f2d15b;
+  color: transparent;
   font-weight: 700;
   font-size: 0.75rem;
   line-height: 1;
   display: inline-grid;
   place-items: center;
   cursor: pointer;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.65);
+  overflow: hidden;
+  text-shadow: none;
+  box-shadow: inset 0 0 0.35rem rgba(255, 188, 216, 0.16);
 }
 
-.shapeshifter-passion__box.is-filled {
+.shapeshifter-passion__box:hover {
+  border: var(--border-boxes-hover);
+  box-shadow: var(--box-shadow-button-hover), inset 0 0 0.35rem rgba(255, 188, 216, 0.22);
+}
+
+.shapeshifter-passion__box.is-filled,
+.shapeshifter-passion__box[data-state='1'] {
   background:
-    linear-gradient(180deg, rgba(241, 175, 194, 0.98), rgba(181, 92, 118, 0.98)),
+    linear-gradient(180deg, rgba(224, 31, 74, 0.98), rgba(105, 9, 32, 0.98)),
     url("/systems/mta/ui/rock.jpg") repeat;
-  border-color: rgba(247, 215, 224, 0.9);
+  border-color: rgba(255, 98, 129, 0.96);
+  color: transparent;
+  box-shadow: inset 0 0 0.45rem rgba(59, 2, 18, 0.58), 0 0 0.25rem rgba(224, 31, 74, 0.28);
+}
+
+.shapeshifter-passion__box.is-filled::before,
+.shapeshifter-passion__box.is-filled::after,
+.shapeshifter-passion__box[data-state='1']::before,
+.shapeshifter-passion__box[data-state='1']::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 145%;
+  height: 2px;
+  background: rgba(255, 226, 232, 0.88);
+  box-shadow: 0 0 0.18rem rgba(60, 0, 18, 0.65);
+  transform-origin: center;
+}
+
+.shapeshifter-passion__box.is-filled::before,
+.shapeshifter-passion__box[data-state='1']::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.shapeshifter-passion__box.is-filled::after,
+.shapeshifter-passion__box[data-state='1']::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .shapeshifter-passion__note {

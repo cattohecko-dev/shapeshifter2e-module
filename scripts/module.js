@@ -4,6 +4,8 @@ import { MtAItemSheet } from "/systems/mta/module/item-sheet.js";
 
 const MODULE_ID = "shapeshifter2e-module";
 const SHAPESHIFTER_VARIANT = "shapeshifter";
+const EXTRA_ACTIONS_FLAG = "extraActions";
+const EXTRA_ACTION_PASS_FLAG = "extraActionPass";
 const MYTH_FACET_TEMPLATE = `modules/${MODULE_ID}/templates/items/myth-facet.html`;
 const TOUCHSTONE_TEMPLATE = `modules/${MODULE_ID}/templates/items/touchstone.html`;
 const LAMB_TEMPLATE = `modules/${MODULE_ID}/templates/items/lamb.html`;
@@ -1790,6 +1792,167 @@ function patchExcaliburSync() {
   Hooks._shapeshifterExcaliburSyncPatched = true;
 }
 
+function getExtraActionCount(combatant) {
+  const value = Number(combatant?.getFlag?.(MODULE_ID, EXTRA_ACTIONS_FLAG) ?? 0);
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function getExtraActionPass(combat) {
+  const value = Number(combat?.getFlag?.(MODULE_ID, EXTRA_ACTION_PASS_FLAG) ?? 0);
+  return Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+
+function shouldSkipCombatant(combat, combatant) {
+  return combat?.settings?.skipDefeated === true && combatant?.defeated === true;
+}
+
+function findNextNormalTurn(combat, afterIndex) {
+  return combat.turns.findIndex((combatant, index) => {
+    return index > afterIndex && !shouldSkipCombatant(combat, combatant);
+  });
+}
+
+function getAdjustedExtraActionCount(combatant, adjustments) {
+  if (adjustments?.has(combatant.id)) return adjustments.get(combatant.id);
+  return getExtraActionCount(combatant);
+}
+
+function findExtraActionTurn(combat, afterIndex = -1, adjustments = null) {
+  return combat.turns.findIndex((combatant, index) => {
+    return index > afterIndex
+      && !shouldSkipCombatant(combat, combatant)
+      && getAdjustedExtraActionCount(combatant, adjustments) > 0;
+  });
+}
+
+function getFirstNormalTurn(combat) {
+  const index = findNextNormalTurn(combat, -1);
+  return index >= 0 ? index : 0;
+}
+
+async function advanceToExtraActionTurn(combat, turn, pass) {
+  return combat.update({
+    turn,
+    [`flags.${MODULE_ID}.${EXTRA_ACTION_PASS_FLAG}`]: pass
+  });
+}
+
+async function spendExtraAction(combat, turnIndex) {
+  const combatant = combat.turns[turnIndex];
+  if (!combatant) return new Map();
+
+  const nextCount = Math.max(0, getExtraActionCount(combatant) - 1);
+  await combatant.setFlag(MODULE_ID, EXTRA_ACTIONS_FLAG, nextCount);
+  return new Map([[combatant.id, nextCount]]);
+}
+
+async function advanceOutOfExtraActionTurns(combat) {
+  return combat.update({
+    round: Math.max(1, Number(combat.round ?? 0) + 1),
+    turn: getFirstNormalTurn(combat),
+    [`flags.${MODULE_ID}.${EXTRA_ACTION_PASS_FLAG}`]: 0
+  });
+}
+
+function getCombatTrackerRoot(html) {
+  return html instanceof HTMLElement ? html : html?.[0] ?? html;
+}
+
+function renderExtraActionControls(app, html) {
+  const root = getCombatTrackerRoot(html);
+  const combat = app.viewed ?? game.combat;
+  if (!root || !combat) return;
+
+  const activePass = getExtraActionPass(combat);
+  root.querySelectorAll(".combatant").forEach(row => {
+    const combatant = combat.combatants.get(row.dataset.combatantId);
+    if (!combatant) return;
+
+    row.querySelector(".shapeshifter-extra-actions")?.remove();
+
+    const count = getExtraActionCount(combatant);
+    const controls = document.createElement("div");
+    const activeThisPass = activePass > 0 && count >= activePass;
+    controls.className = `shapeshifter-extra-actions${activeThisPass ? " shapeshifter-extra-actions--active" : ""}`;
+    controls.dataset.combatantId = combatant.id;
+    controls.title = activePass > 0 ? `Extra Actions: pass ${activePass}` : "Extra Actions";
+
+    controls.innerHTML = game.user.isGM
+      ? `
+        <button type="button" class="shapeshifter-extra-actions__button" data-extra-action-delta="-1" aria-label="Remove Extra Action">-</button>
+        <span class="shapeshifter-extra-actions__value">EA <strong>${count}</strong></span>
+        <button type="button" class="shapeshifter-extra-actions__button" data-extra-action-delta="1" aria-label="Add Extra Action">+</button>
+      `
+      : `<span class="shapeshifter-extra-actions__value">EA <strong>${count}</strong></span>`;
+
+    const anchor = row.querySelector(".token-initiative") ?? row.querySelector(".token-name") ?? row;
+    if (anchor === row) row.append(controls);
+    else anchor.insertAdjacentElement("afterend", controls);
+  });
+
+  if (root.dataset.shapeshifterExtraActionsReady === "true") return;
+  root.dataset.shapeshifterExtraActionsReady = "true";
+
+  root.addEventListener("click", async event => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const button = target?.closest("[data-extra-action-delta]");
+    if (!button || !game.user.isGM) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const row = button.closest(".combatant");
+    const combatant = combat.combatants.get(row?.dataset.combatantId);
+    if (!combatant) return;
+
+    const delta = Number(button.dataset.extraActionDelta);
+    const nextCount = Math.max(0, Math.min(5, getExtraActionCount(combatant) + delta));
+    await combatant.setFlag(MODULE_ID, EXTRA_ACTIONS_FLAG, nextCount);
+  });
+}
+
+function patchCombatTrackerExtraActions() {
+  if (Hooks._shapeshifterCombatTrackerPatched) return;
+
+  Hooks.on("renderCombatTracker", renderExtraActionControls);
+  Hooks._shapeshifterCombatTrackerPatched = true;
+}
+
+function patchCombatExtraActionTurns() {
+  if (Combat.prototype._shapeshifterNextTurn) return;
+
+  const originalNextTurn = Combat.prototype.nextTurn;
+  Combat.prototype._shapeshifterNextTurn = originalNextTurn;
+
+  Combat.prototype.nextTurn = async function (...args) {
+    if (!game.user.isGM || !this.turns?.length || !this.started) {
+      return originalNextTurn.apply(this, args);
+    }
+
+    const currentTurn = Number(this.turn ?? -1);
+    const activePass = getExtraActionPass(this);
+
+    if (activePass > 0) {
+      const adjustments = await spendExtraAction(this, currentTurn);
+
+      const nextExtraTurn = findExtraActionTurn(this, currentTurn, adjustments);
+      if (nextExtraTurn >= 0) return advanceToExtraActionTurn(this, nextExtraTurn, 1);
+
+      const firstExtraTurn = findExtraActionTurn(this, -1, adjustments);
+      if (firstExtraTurn >= 0) return advanceToExtraActionTurn(this, firstExtraTurn, 1);
+
+      return advanceOutOfExtraActionTurns(this);
+    }
+
+    if (findNextNormalTurn(this, currentTurn) >= 0) return originalNextTurn.apply(this, args);
+
+    const firstExtraTurn = findExtraActionTurn(this);
+    if (firstExtraTurn >= 0) return advanceToExtraActionTurn(this, firstExtraTurn, 1);
+
+    return originalNextTurn.apply(this, args);
+  };
+}
+
 Hooks.once("init", () => {
   patchWerewolfTemplateConfig();
   patchItemSheetTemplate();
@@ -1799,5 +1962,7 @@ Hooks.once("init", () => {
   patchWerewolfForms();
   patchSheetRender();
   patchExcaliburSync();
+  patchCombatTrackerExtraActions();
+  patchCombatExtraActionTurns();
 });
 

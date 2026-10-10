@@ -24,6 +24,51 @@
     <div class="tab traits" data-group="primary" data-tab="traits">
       <div class="item-stat-block padded">
         <div class="form-line">
+          <label>Kind</label>
+          <select name="flags.shapeshifter2e-module.touchstone.kind">
+            {{#select shapeshifterTouchstone.kind}}
+            {{#each shapeshifterTouchstone.kinds}}
+            <option value="{{@key}}">{{this}}</option>
+            {{/each}}
+            {{/select}}
+          </select>
+        </div>
+
+        <div class="form-line shapeshifter-touchstone-actor-drop">
+          <label>Linked Character Sheet</label>
+          <span class="shapeshifter-touchstone-linked-actor">
+            <select name="flags.shapeshifter2e-module.touchstone.actorId">
+              {{#select shapeshifterTouchstone.actorId}}
+              <option value="">No linked sheet</option>
+              {{#each shapeshifterTouchstone.availableActors}}
+              <option value="{{id}}">{{name}}</option>
+              {{/each}}
+              {{/select}}
+            </select>
+            {{#if shapeshifterTouchstone.linkedActor}}
+            <span class="shapeshifter-touchstone-power">Power {{shapeshifterTouchstone.power.total}} (Willpower {{shapeshifterTouchstone.power.willpower}}{{#if shapeshifterTouchstone.isSquire}} + {{shapeshifterTouchstone.power.squireSkillLabel}} {{shapeshifterTouchstone.power.skill}}{{/if}})</span>
+            <span class="stoneButton shapeshifter-touchstone-actor-open" title="Open linked character sheet">Open</span>
+            <span class="stoneButton shapeshifter-touchstone-actor-clear" title="Clear linked character sheet">Clear</span>
+            {{else}}
+            <span class="shapeshifter-touchstone-power">Drop a character actor here to link a Page or Squire.</span>
+            {{/if}}
+          </span>
+        </div>
+
+        {{#if shapeshifterTouchstone.isSquire}}
+        <div class="form-line">
+          <label>Squire Skill</label>
+          <select name="flags.shapeshifter2e-module.touchstone.squireSkill">
+            {{#select shapeshifterTouchstone.squireSkill}}
+            {{#each shapeshifterTouchstone.squireSkillChoices}}
+            <option value="{{path}}">{{label}}</option>
+            {{/each}}
+            {{/select}}
+          </select>
+        </div>
+        {{/if}}
+
+        <div class="form-line">
           <label>Impression</label>
           <select name="system.impression">
             {{#select system.impression}}

@@ -119,6 +119,11 @@ const MYTH_FACET_CATEGORIES = {
   excalibur: "Excalibur Myths"
 };
 
+const TOUCHSTONE_KINDS = {
+  page: "Page",
+  squire: "Squire"
+};
+
 const SHAPESHIFTER_DICE_TRAITS = {
   mythheart: "Mythheart",
   glamour: "Glamour",
@@ -309,6 +314,11 @@ function getTouchstoneData(item) {
   return item?.getFlag?.(MODULE_ID, "touchstone") ?? item?.flags?.[MODULE_ID]?.touchstone ?? {};
 }
 
+function getTouchstoneKind(item) {
+  const kind = getTouchstoneData(item)?.kind ?? "page";
+  return TOUCHSTONE_KINDS[kind] ? kind : "page";
+}
+
 function isTouchstoneItem(item) {
   return item?.type === "relationship" && getTouchstoneData(item)?.isTouchstone === true;
 }
@@ -327,6 +337,54 @@ function getTouchstoneFontData(item) {
 function getTouchstoneStatMods(item) {
   const statMods = getTouchstoneData(item)?.statMods ?? [];
   return Array.isArray(statMods) ? statMods : Object.values(statMods);
+}
+
+function getLinkedTouchstoneActor(item) {
+  const actorId = getTouchstoneData(item)?.actorId;
+  return actorId ? game.actors?.get(actorId) ?? null : null;
+}
+
+function getActorWillpowerValue(actor) {
+  return toNumber(actor?.system?.willpower?.max ?? actor?.system?.willpower?.value, 0);
+}
+
+function getActorTraitValue(actor, traitPath) {
+  const trait = foundry.utils.getProperty(actor?.system ?? {}, traitPath);
+  return toNumber(trait?.final ?? trait?.value, 0);
+}
+
+function getTouchstoneSquireSkill(item) {
+  return getTouchstoneData(item)?.squireSkill ?? "skills_physical.athletics";
+}
+
+function getSquireSkillChoices() {
+  return ["skills_physical", "skills_social", "skills_mental"].flatMap(group => {
+    return Object.entries(CONFIG.MTA[group] ?? {}).map(([key, label]) => ({
+      path: `${group}.${key}`,
+      label: game.i18n.localize(label)
+    }));
+  });
+}
+
+function getTouchstonePowerBreakdown(item) {
+  const actor = getLinkedTouchstoneActor(item);
+  const willpower = getActorWillpowerValue(actor);
+  const kind = getTouchstoneKind(item);
+  const squireSkill = getTouchstoneSquireSkill(item);
+  const skill = kind === "squire" ? getActorTraitValue(actor, squireSkill) : 0;
+
+  return {
+    kind,
+    willpower,
+    squireSkill,
+    squireSkillLabel: getSquireSkillChoices().find(choice => choice.path === squireSkill)?.label ?? squireSkill,
+    skill,
+    total: actor ? willpower + skill : 0
+  };
+}
+
+function getTouchstonePower(item) {
+  return getTouchstonePowerBreakdown(item).total;
 }
 
 function getTouchstones(actor) {
@@ -878,13 +936,18 @@ function buildPledgesTable(actor) {
 
 function buildTouchstoneRow(item) {
   const font = getTouchstoneFontData(item);
+  const kind = getTouchstoneKind(item);
+  const linkedActor = getLinkedTouchstoneActor(item);
+  const power = getTouchstonePower(item);
   const weaponSummary = [
     font.model || font.weaponType,
     `Damage ${toNumber(font.damage)}`,
     `Init ${addPlus(toNumber(font.initiativeMod))}`,
     `Str ${toNumber(font.strengthReq, 1)}`,
-    `Size ${toNumber(font.size, 1)}`
-  ].join(" | ");
+    `Size ${toNumber(font.size, 1)}`,
+    power ? `Power ${power}` : null
+  ].filter(Boolean).join(" | ");
+  const touchstoneSummary = `${TOUCHSTONE_KINDS[kind]} | ${linkedActor ? linkedActor.name : "No linked sheet"}`;
 
   return `
     <tr class="item-row item shapeshifter-touchstone-row" data-item-id="${item.id}" draggable="true">
@@ -894,6 +957,7 @@ function buildTouchstoneRow(item) {
           <span>${escapeHtml(item.name)}</span>
         </div>
       </td>
+      <td class="cell">${escapeHtml(touchstoneSummary)}</td>
       <td class="cell">${escapeHtml(item.system?.impression ?? "Average")}</td>
       <td class="cell">${toNumber(item.system?.doors?.value)} / ${toNumber(item.system?.doors?.max, 1)}</td>
       <td class="cell">${escapeHtml(weaponSummary)}</td>
@@ -918,6 +982,7 @@ function buildTouchstonesTable(actor) {
             <span class="collapsible button fas fa-minus-square"></span>
             <span>Touchstones</span>
           </th>
+          <th class="cell header">Kind</th>
           <th class="cell header">Impression</th>
           <th class="cell header">Camaraderie</th>
           <th class="cell header">Font</th>
@@ -928,7 +993,7 @@ function buildTouchstonesTable(actor) {
         </tr>
       </thead>
       <tbody>
-        ${rows || `<tr><td class="cell first shapeshifter-empty-row" colspan="5">No Touchstones yet. Use + to create one.</td></tr>`}
+        ${rows || `<tr><td class="cell first shapeshifter-empty-row" colspan="6">No Touchstones yet. Use + to create one.</td></tr>`}
       </tbody>
     </table>
   `;
@@ -1005,6 +1070,9 @@ async function createTouchstone(actor) {
       [MODULE_ID]: {
         touchstone: {
           isTouchstone: true,
+          kind: "page",
+          actorId: "",
+          squireSkill: "skills_physical.athletics",
           font: foundry.utils.deepClone(DEFAULT_TOUCHSTONE_FONT),
           statMods: []
         }
@@ -1090,9 +1158,17 @@ async function toggleExcaliburBurn(actor) {
 function buildExcaliburDescription(actor, touchstone) {
   const excalibur = getExcaliburData(actor);
   const font = getTouchstoneFontData(touchstone);
+  const pageActor = getLinkedTouchstoneActor(touchstone);
+  const power = getTouchstonePowerBreakdown(touchstone);
   const pieces = [];
 
   if (excalibur.burning) pieces.push("<h2>Burning</h2><p>This Excalibur is burning its Touchstone.</p>");
+  if (power.kind === "page") {
+    pieces.push(`<h2>Page</h2><p>${pageActor ? escapeHtml(pageActor.name) : "No linked character sheet."}${power.total ? ` Power ${power.total} from Willpower ${power.willpower}.` : ""}</p>`);
+  }
+  if (power.kind === "squire") {
+    pieces.push(`<h2>Squire</h2><p>${pageActor ? escapeHtml(pageActor.name) : "No linked character sheet."}${power.total ? ` Power ${power.total} from Willpower ${power.willpower} + ${escapeHtml(power.squireSkillLabel)} ${power.skill}.` : ""}</p>`);
+  }
   if (excalibur.appearance) pieces.push(`<h2>Appearance</h2><p>${nl2br(excalibur.appearance)}</p>`);
   if (font.model) pieces.push(`<h2>Weapon Model</h2><p>${escapeHtml(font.model)}</p>`);
   if (font.text) pieces.push(`<h2>Font</h2><p>${nl2br(font.text)}</p>`);
@@ -1144,6 +1220,7 @@ async function createOrUpdateExcaliburWeapon(actor, touchstone) {
   const excalibur = getExcaliburData(actor);
   const font = getTouchstoneFontData(touchstone);
   const burnMultiplier = excalibur.burning === true ? 2 : 1;
+  const pagePower = getTouchstonePower(touchstone);
   const statMods = getTouchstoneStatMods(touchstone)
     .filter(mod => mod?.name)
     .map(mod => ({
@@ -1163,6 +1240,7 @@ async function createOrUpdateExcaliburWeapon(actor, touchstone) {
       strengthReq: toNumber(font.strengthReq, 1),
       size: toNumber(font.size, 1),
       availability: toNumber(font.availability),
+      diceBonus: pagePower * burnMultiplier,
       damageType: "lethal",
       applyDefense: true,
       effects: statMods,
@@ -1257,8 +1335,27 @@ function patchItemSheetTemplate() {
     const sheetData = await originalGetData.apply(this, args);
     if (isTouchstoneItem(this.item)) {
       const touchstone = getTouchstoneData(this.item);
+      const linkedActor = getLinkedTouchstoneActor(this.item);
+      const power = getTouchstonePowerBreakdown(this.item);
       sheetData.shapeshifterTouchstone = {
         ...touchstone,
+        kind: getTouchstoneKind(this.item),
+        isSquire: getTouchstoneKind(this.item) === "squire",
+        actorId: touchstone.actorId ?? "",
+        squireSkill: getTouchstoneSquireSkill(this.item),
+        squireSkillChoices: getSquireSkillChoices(),
+        power,
+        linkedActor: linkedActor ? {
+          id: linkedActor.id,
+          name: linkedActor.name,
+          img: linkedActor.img,
+          willpower: power.willpower
+        } : null,
+        kinds: TOUCHSTONE_KINDS,
+        availableActors: game.actors
+          .filter(actor => actor.type === "character")
+          .map(actor => ({ id: actor.id, name: actor.name }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
         font: {
           ...DEFAULT_TOUCHSTONE_FONT,
           ...(touchstone.font ?? {})
@@ -1291,6 +1388,53 @@ function patchItemSheetTemplate() {
       statMods.splice(index, 1);
       await this.item.update({ [`flags.${MODULE_ID}.touchstone.statMods`]: statMods });
     });
+
+    html.find(".shapeshifter-touchstone-actor-open").click(event => {
+      event.preventDefault();
+      getLinkedTouchstoneActor(this.item)?.sheet?.render(true);
+    });
+
+    html.find(".shapeshifter-touchstone-actor-clear").click(async event => {
+      event.preventDefault();
+      await this.item.update({ [`flags.${MODULE_ID}.touchstone.actorId`]: "" });
+    });
+
+    html.find(".shapeshifter-touchstone-actor-drop").on("dragover", event => {
+      event.preventDefault();
+      event.currentTarget.classList.add("is-hovered");
+    });
+
+    html.find(".shapeshifter-touchstone-actor-drop").on("dragleave", event => {
+      event.currentTarget.classList.remove("is-hovered");
+    });
+
+    html.find(".shapeshifter-touchstone-actor-drop").on("drop", async event => {
+      event.preventDefault();
+      event.currentTarget.classList.remove("is-hovered");
+
+      const rawData = event.originalEvent?.dataTransfer?.getData("text/plain") ?? event.dataTransfer?.getData("text/plain");
+      if (!rawData) return;
+
+      let data;
+      try {
+        data = JSON.parse(rawData);
+      } catch {
+        return;
+      }
+
+      const actor = data.type === "Actor"
+        ? await fromUuid(data.uuid ?? `Actor.${data.id}`)
+        : null;
+      if (!actor || actor.documentName !== "Actor") {
+        ui.notifications.warn("Drop a character actor here to link this Touchstone.");
+        return;
+      }
+
+      await this.item.update({
+        [`flags.${MODULE_ID}.touchstone.actorId`]: actor.id,
+        [`flags.${MODULE_ID}.touchstone.kind`]: "page"
+      });
+    });
   };
 
   const originalUpdateObject = MtAItemSheet.prototype._updateObject;
@@ -1315,6 +1459,9 @@ function patchItemPrepareData() {
 
     if (isTouchstoneItem(this)) {
       const touchstone = getTouchstoneData(this);
+      touchstone.kind ??= "page";
+      touchstone.actorId ??= "";
+      touchstone.squireSkill ??= "skills_physical.athletics";
       touchstone.font ??= foundry.utils.deepClone(DEFAULT_TOUCHSTONE_FONT);
       touchstone.statMods ??= [];
     }

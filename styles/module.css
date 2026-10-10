@@ -767,6 +767,35 @@
   resize: vertical;
 }
 
+.shapeshifter-touchstone-actor-drop {
+  align-items: start;
+  padding: 0.35rem;
+  border: 1px dashed rgba(195, 132, 82, 0.45);
+  background: rgba(10, 6, 8, 0.28);
+}
+
+.shapeshifter-touchstone-actor-drop.is-hovered {
+  border-color: rgba(242, 209, 91, 0.95);
+  box-shadow: inset 0 0 0.8rem rgba(242, 209, 91, 0.16);
+}
+
+.shapeshifter-touchstone-linked-actor {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.shapeshifter-touchstone-linked-actor select {
+  min-width: 12rem;
+}
+
+.shapeshifter-touchstone-power {
+  color: rgba(231, 222, 214, 0.78);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .shapeshifter-touchstone-statmods select {
   min-width: 15rem;
 }

@@ -498,6 +498,183 @@
   letter-spacing: 0.04em;
 }
 
+.shapeshifter-season {
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.65rem;
+  color: #e6dfd8;
+  background:
+    linear-gradient(180deg, rgba(11, 26, 30, 0.88), rgba(20, 12, 18, 0.9)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+  border: 1px solid rgba(195, 129, 73, 0.75);
+  box-shadow: inset 0 0 0.45rem rgba(0, 0, 0, 0.45);
+}
+
+.shapeshifter-season__header {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.shapeshifter-season.is-open .shapeshifter-season__header {
+  padding-bottom: 0.55rem;
+  border-bottom: 2px solid rgba(206, 140, 82, 0.78);
+}
+
+.shapeshifter-season__header h3 {
+  margin: 0;
+  color: #f3dcae;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.shapeshifter-season__header p,
+.shapeshifter-season__summary {
+  margin: 0.25rem 0 0;
+  color: rgba(230, 223, 216, 0.82);
+  font-size: 0.8rem;
+}
+
+.shapeshifter-season__actions,
+.shapeshifter-season__body-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  justify-content: flex-end;
+}
+
+.shapeshifter-season__actions button,
+.shapeshifter-season__body-actions button,
+.shapeshifter-season__tab {
+  min-height: 1.6rem;
+  padding: 0.15rem 0.55rem;
+  color: #f0e6dc;
+  background:
+    linear-gradient(180deg, rgba(80, 53, 36, 0.96), rgba(39, 27, 22, 0.96)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+  border: 1px solid rgba(195, 129, 73, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+
+.shapeshifter-season__actions button:hover,
+.shapeshifter-season__body-actions button:hover,
+.shapeshifter-season__tab:hover {
+  border-color: rgba(245, 191, 110, 0.95);
+  box-shadow: 0 0 0.4rem rgba(195, 129, 73, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.shapeshifter-season__actions button:disabled,
+.shapeshifter-season__body-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.shapeshifter-season__body {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.65rem;
+}
+
+.shapeshifter-season.is-collapsed .shapeshifter-season__body {
+  display: none;
+}
+
+.shapeshifter-season__instructions {
+  margin: 0;
+  color: rgba(230, 223, 216, 0.78);
+  font-size: 0.8rem;
+}
+
+.shapeshifter-season__toggle {
+  min-width: 4rem;
+}
+
+.shapeshifter-season__body-actions {
+  justify-content: flex-start;
+}
+
+.shapeshifter-season__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.shapeshifter-season__tab {
+  flex: 1 1 7rem;
+  font-weight: 700;
+}
+
+.shapeshifter-season__tab.is-active {
+  color: #201512;
+  background:
+    linear-gradient(180deg, rgba(235, 183, 107, 0.98), rgba(155, 89, 49, 0.98)),
+    url("/systems/mta/ui/rock.jpg") repeat;
+  border-color: rgba(255, 224, 153, 0.95);
+}
+
+.shapeshifter-season__tab.has-layout:not(.is-active)::after {
+  content: " saved";
+  color: #b8e29d;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.shapeshifter-season__catchup {
+  padding: 0.55rem;
+  border: 1px solid rgba(206, 140, 82, 0.42);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.shapeshifter-season__catchup h4 {
+  margin: 0 0 0.25rem;
+  color: #f3dcae;
+  font-size: 0.9rem;
+}
+
+.shapeshifter-season__catchup p,
+.shapeshifter-season__catchup-empty {
+  margin: 0 0 0.45rem;
+  color: rgba(230, 223, 216, 0.82);
+  font-size: 0.8rem;
+}
+
+.shapeshifter-season__catchup ul {
+  display: grid;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shapeshifter-season__catchup li {
+  display: grid;
+  grid-template-columns: minmax(5rem, 1fr) 3rem minmax(6rem, auto);
+  gap: 0.45rem;
+  align-items: center;
+  padding: 0.2rem 0.3rem;
+  border-bottom: 1px solid rgba(145, 54, 54, 0.45);
+}
+
+.shapeshifter-season__catchup li.is-leader {
+  color: #f2d887;
+}
+
+.shapeshifter-season__catchup li.is-empty {
+  color: rgba(230, 223, 216, 0.55);
+}
+
+.shapeshifter-season__catchup strong,
+.shapeshifter-season__catchup em {
+  text-align: right;
+}
+
+.shapeshifter-season__catchup em {
+  color: rgba(230, 223, 216, 0.72);
+  font-style: normal;
+  font-size: 0.78rem;
+}
+
 .shapeshifter-traits-tab,
 .shapeshifter-persona-tab {
   color: #e7ded6;

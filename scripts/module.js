@@ -124,6 +124,21 @@ const TOUCHSTONE_KINDS = {
   squire: "Squire"
 };
 
+const SHAPESHIFTER_SEASONS = {
+  spring: "Spring",
+  summer: "Summer",
+  autumn: "Autumn",
+  winter: "Winter"
+};
+
+const SEASON_ATTRIBUTE_GROUPS = ["attributes_physical", "attributes_social", "attributes_mental"];
+const SEASON_SKILL_GROUPS = ["skills_physical", "skills_social", "skills_mental"];
+const SEASON_EXPERIENCE_COSTS = {
+  attributeDot: 4,
+  skillDot: 2,
+  specialty: 1
+};
+
 const SHAPESHIFTER_DICE_TRAITS = {
   mythheart: "Mythheart",
   glamour: "Glamour",
@@ -416,6 +431,205 @@ function getExcaliburData(actor) {
 function toNumber(value, fallback = 0) {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
+}
+
+function getSeasonData(actor) {
+  return actor?.getFlag?.(MODULE_ID, "seasons") ?? actor?.flags?.[MODULE_ID]?.seasons ?? {};
+}
+
+function getActiveSeason(actor) {
+  const active = getSeasonData(actor).active ?? "spring";
+  return SHAPESHIFTER_SEASONS[active] ? active : "spring";
+}
+
+function getSeasonLayouts(actor) {
+  return getSeasonData(actor).layouts ?? {};
+}
+
+function getSeasonLayout(actor, season = getActiveSeason(actor)) {
+  return getSeasonLayouts(actor)?.[season] ?? null;
+}
+
+function isSeasonPanelCollapsed(actor) {
+  return getSeasonData(actor).collapsed !== false;
+}
+
+function hasSeasonLayout(actor, season) {
+  return Boolean(getSeasonLayout(actor, season));
+}
+
+function getSeasonLabel(season) {
+  return SHAPESHIFTER_SEASONS[season] ?? SHAPESHIFTER_SEASONS.spring;
+}
+
+function cloneSeasonAttributeGroup(actor, group) {
+  const source = actor?.system?.[group] ?? {};
+  return Object.fromEntries(Object.entries(source).map(([key, data]) => {
+    return [key, { value: toNumber(data?.value) }];
+  }));
+}
+
+function cloneSeasonSkillGroup(actor, group) {
+  const source = actor?.system?.[group] ?? {};
+  return Object.fromEntries(Object.entries(source).map(([key, data]) => {
+    return [key, {
+      value: toNumber(data?.value),
+      specialties: Array.isArray(data?.specialties) ? foundry.utils.deepClone(data.specialties) : [],
+      isRote: data?.isRote === true
+    }];
+  }));
+}
+
+function buildSeasonLayout(actor) {
+  return {
+    attributes: Object.fromEntries(SEASON_ATTRIBUTE_GROUPS.map(group => [group, cloneSeasonAttributeGroup(actor, group)])),
+    skills: Object.fromEntries(SEASON_SKILL_GROUPS.map(group => [group, cloneSeasonSkillGroup(actor, group)]))
+  };
+}
+
+function buildSeasonUpdate(layout) {
+  const update = {};
+
+  for (const [group, traits] of Object.entries(layout?.attributes ?? {})) {
+    for (const [key, data] of Object.entries(traits ?? {})) {
+      update[`system.${group}.${key}.value`] = toNumber(data?.value);
+    }
+  }
+
+  for (const [group, traits] of Object.entries(layout?.skills ?? {})) {
+    for (const [key, data] of Object.entries(traits ?? {})) {
+      update[`system.${group}.${key}.value`] = toNumber(data?.value);
+      update[`system.${group}.${key}.specialties`] = Array.isArray(data?.specialties) ? foundry.utils.deepClone(data.specialties) : [];
+      update[`system.${group}.${key}.isRote`] = data?.isRote === true;
+    }
+  }
+
+  return update;
+}
+
+function getSeasonExperienceCost(layout) {
+  if (!layout) return null;
+
+  const attributeExperience = Object.values(layout.attributes ?? {})
+    .flatMap(group => Object.values(group ?? {}))
+    .reduce((total, trait) => total + Math.max(0, toNumber(trait?.value, 1) - 1) * SEASON_EXPERIENCE_COSTS.attributeDot, 0);
+  const skillExperience = Object.values(layout.skills ?? {})
+    .flatMap(group => Object.values(group ?? {}))
+    .reduce((total, trait) => total + Math.max(0, toNumber(trait?.value)) * SEASON_EXPERIENCE_COSTS.skillDot, 0);
+  const specialtyExperience = Object.values(layout.skills ?? {})
+    .flatMap(group => Object.values(group ?? {}))
+    .reduce((total, trait) => total + (Array.isArray(trait?.specialties) ? trait.specialties.length : 0) * SEASON_EXPERIENCE_COSTS.specialty, 0);
+
+  return attributeExperience + skillExperience + specialtyExperience;
+}
+
+function getSeasonCatchUpData(actor) {
+  const rows = Object.entries(SHAPESHIFTER_SEASONS)
+    .map(([key, label]) => {
+      const layout = getSeasonLayout(actor, key);
+      const experience = getSeasonExperienceCost(layout);
+
+      return {
+        key,
+        label,
+        hasLayout: Boolean(layout),
+        experience
+      };
+    });
+  const savedRows = rows.filter(row => row.hasLayout);
+  const maxExperience = savedRows.length ? Math.max(...savedRows.map(row => row.experience)) : null;
+  const leaders = maxExperience === null ? [] : savedRows.filter(row => row.experience === maxExperience);
+
+  return {
+    rows: rows.map(row => ({
+      ...row,
+      catchUp: row.hasLayout && maxExperience !== null ? Math.max(0, maxExperience - row.experience) : null,
+      isLeader: row.hasLayout && row.experience === maxExperience
+    })),
+    maxExperience,
+    leaderLabel: leaders.map(row => row.label).join(", ")
+  };
+}
+
+function getSeasonCatchUpSummary(actor) {
+  const catchUp = getSeasonCatchUpData(actor);
+  if (catchUp.maxExperience === null) return "No saved seasons yet.";
+
+  const activeSeason = getActiveSeason(actor);
+  const activeRow = catchUp.rows.find(row => row.key === activeSeason);
+  if (!activeRow?.hasLayout) return `${catchUp.leaderLabel} is the highest saved season at ${catchUp.maxExperience} Experiences.`;
+  if (activeRow.isLeader) return `${activeRow.label} is caught up at ${activeRow.experience} Experiences.`;
+
+  return `${activeRow.label} needs ${activeRow.catchUp} Experiences to catch up to ${catchUp.leaderLabel}.`;
+}
+
+function buildSeasonCatchUpHtml(actor) {
+  const catchUp = getSeasonCatchUpData(actor);
+  if (catchUp.maxExperience === null) {
+    return `<p class="shapeshifter-season__catchup-empty">Save at least one season to compare Experience totals.</p>`;
+  }
+
+  const rows = catchUp.rows.map(row => {
+    const status = !row.hasLayout
+      ? "Not saved"
+      : row.isLeader
+        ? "Highest"
+        : `Catch up: ${row.catchUp} Exp`;
+    const experience = row.hasLayout ? row.experience : "-";
+
+    return `
+      <li class="${row.isLeader ? "is-leader" : ""} ${row.hasLayout ? "" : "is-empty"}">
+        <span>${row.label}</span>
+        <strong>${experience}</strong>
+        <em>${status}</em>
+      </li>
+    `;
+  }).join("");
+
+  return `
+    <div class="shapeshifter-season__catchup">
+      <h4>Season Catch-Up</h4>
+      <p>${escapeHtml(getSeasonCatchUpSummary(actor))}</p>
+      <ul>${rows}</ul>
+    </div>
+  `;
+}
+
+function getSeasonLayoutSummary(layout) {
+  if (!layout) return "No saved layout yet. Use Save Current when this sheet matches the season.";
+
+  const attributeCount = Object.values(layout.attributes ?? {})
+    .reduce((count, group) => count + Object.keys(group ?? {}).length, 0);
+  const skillCount = Object.values(layout.skills ?? {})
+    .reduce((count, group) => count + Object.keys(group ?? {}).length, 0);
+  const tableSkillCount = Object.values(layout.skills ?? {})
+    .flatMap(group => Object.values(group ?? {}))
+    .filter(skill => skill?.isRote === true).length;
+
+  return `Saved ${attributeCount} attributes, ${skillCount} skills, and ${tableSkillCount} Table skills.`;
+}
+
+async function saveSeasonLayout(actor, season) {
+  if (!SHAPESHIFTER_SEASONS[season]) return;
+
+  await actor.update({
+    [`flags.${MODULE_ID}.seasons.active`]: season,
+    [`flags.${MODULE_ID}.seasons.layouts.${season}`]: buildSeasonLayout(actor)
+  });
+}
+
+async function applySeasonLayout(actor, season) {
+  if (!SHAPESHIFTER_SEASONS[season]) return false;
+
+  const layout = getSeasonLayout(actor, season);
+  if (!layout) return false;
+
+  await actor.update({
+    ...buildSeasonUpdate(layout),
+    [`flags.${MODULE_ID}.seasons.active`]: season
+  });
+
+  return true;
 }
 
 function nl2br(value) {
@@ -1214,6 +1428,65 @@ function renderTableSkillCheckboxes(actor, html) {
   });
 }
 
+function buildSeasonalConfigurationsHtml(actor) {
+  const activeSeason = getActiveSeason(actor);
+  const activeLayout = getSeasonLayout(actor, activeSeason);
+  const isCollapsed = isSeasonPanelCollapsed(actor);
+  const seasonTabs = Object.entries(SHAPESHIFTER_SEASONS).map(([key, label]) => {
+    const isActive = key === activeSeason;
+    const hasLayout = hasSeasonLayout(actor, key);
+    const classes = [
+      "shapeshifter-season__tab",
+      isActive ? "is-active" : "",
+      hasLayout ? "has-layout" : ""
+    ].filter(Boolean).join(" ");
+    const title = hasLayout ? `${label} has a saved layout.` : `${label} has no saved layout yet.`;
+
+    return `<button type="button" class="${classes}" data-season="${key}" title="${escapeAttribute(title)}">${label}</button>`;
+  }).join("");
+
+  return `
+    <section class="shapeshifter-season kInput ${isCollapsed ? "is-collapsed" : "is-open"}" aria-label="Seasonal Sheet Configurations">
+      <header class="shapeshifter-season__header">
+        <div>
+          <h3>Seasonal Configurations</h3>
+          <p><strong>${getSeasonLabel(activeSeason)}:</strong> ${escapeHtml(getSeasonCatchUpSummary(actor))}</p>
+        </div>
+        <div class="shapeshifter-season__actions">
+          <button type="button" class="shapeshifter-season__toggle" aria-expanded="${isCollapsed ? "false" : "true"}">
+            ${isCollapsed ? "Open" : "Fold"}
+          </button>
+        </div>
+      </header>
+      <div class="shapeshifter-season__body">
+        <p class="shapeshifter-season__instructions">Save and swap Attribute, Skill, specialty, and Table Skill layouts.</p>
+        <div class="shapeshifter-season__tabs" role="group" aria-label="Seasons">
+          ${seasonTabs}
+        </div>
+        <div class="shapeshifter-season__body-actions">
+          <button type="button" class="shapeshifter-season__save" data-season="${activeSeason}">Save Current</button>
+          <button type="button" class="shapeshifter-season__apply" data-season="${activeSeason}" ${activeLayout ? "" : "disabled"}>Apply Season</button>
+        </div>
+        <p class="shapeshifter-season__summary">
+          <strong>${getSeasonLabel(activeSeason)}:</strong> ${escapeHtml(getSeasonLayoutSummary(activeLayout))}
+        </p>
+        ${buildSeasonCatchUpHtml(actor)}
+      </div>
+    </section>
+  `;
+}
+
+function renderSeasonalConfigurations(actor, html) {
+  const attributesTab = html.find('.tab[data-tab="attributes"]').first();
+  if (!attributesTab.length) return;
+
+  attributesTab.find(".shapeshifter-season").remove();
+
+  const firstBlock = attributesTab.children(".tab-block").first();
+  if (firstBlock.length) firstBlock.prepend(buildSeasonalConfigurationsHtml(actor));
+  else attributesTab.prepend(buildSeasonalConfigurationsHtml(actor));
+}
+
 async function createOrUpdateExcaliburWeapon(actor, touchstone) {
   if (!actor?.isOwner || !isTouchstoneItem(touchstone)) return null;
 
@@ -1648,6 +1921,7 @@ function patchSheetRender() {
       giftsTab.addClass("active");
     }
 
+    renderSeasonalConfigurations(app.actor, html);
     renderTableSkillCheckboxes(app.actor, html);
 
     const mythTab = giftsTab;
@@ -1657,7 +1931,7 @@ function patchSheetRender() {
     html.off(".shapeshifterMyth");
     html.off(".shapeshifterMythScroll");
 
-    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete, .shapeshifter-touchstone-create, .shapeshifter-relationship-create, .shapeshifter-lamb-create, .shapeshifter-excalibur-sheathe, .shapeshifter-excalibur-burn", () => rememberSheetScroll(app, html));
+    html.on("pointerdown.shapeshifterMythScroll", "input, select, textarea, .plusBtn, .minusBtn, .item-create, .item-delete, .shapeshifter-touchstone-create, .shapeshifter-relationship-create, .shapeshifter-lamb-create, .shapeshifter-excalibur-sheathe, .shapeshifter-excalibur-burn, .shapeshifter-season__toggle, .shapeshifter-season__tab, .shapeshifter-season__save, .shapeshifter-season__apply", () => rememberSheetScroll(app, html));
     html.on("change.shapeshifterMythScroll", "input, select, textarea", () => rememberSheetScroll(app, html));
 
     html.on("click.shapeshifterMyth", '.tabs .item[data-tab="excalibur"]', ev => {
@@ -1675,6 +1949,48 @@ function patchSheetRender() {
 
     html.on("click.shapeshifterMyth", '.tabs .item[data-tab]:not([data-tab="excalibur"])', ev => {
       app._shapeshifterActiveTab = ev.currentTarget.dataset.tab;
+    });
+
+    html.on("click.shapeshifterMyth", ".shapeshifter-season__toggle", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      await app.actor.update({
+        [`flags.${MODULE_ID}.seasons.collapsed`]: !isSeasonPanelCollapsed(app.actor)
+      });
+    });
+
+    html.on("click.shapeshifterMyth", ".shapeshifter-season__tab", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const season = ev.currentTarget.dataset.season;
+      if (!SHAPESHIFTER_SEASONS[season]) return;
+
+      await app.actor.update({ [`flags.${MODULE_ID}.seasons.active`]: season });
+    });
+
+    html.on("click.shapeshifterMyth", ".shapeshifter-season__save", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const season = ev.currentTarget.dataset.season ?? getActiveSeason(app.actor);
+      await saveSeasonLayout(app.actor, season);
+      ui.notifications.info(`${getSeasonLabel(season)} layout saved.`);
+    });
+
+    html.on("click.shapeshifterMyth", ".shapeshifter-season__apply", async ev => {
+      ev.preventDefault();
+      if (!app.actor?.isOwner) return;
+      rememberSheetScroll(app, html);
+
+      const season = ev.currentTarget.dataset.season ?? getActiveSeason(app.actor);
+      const applied = await applySeasonLayout(app.actor, season);
+      if (applied) ui.notifications.info(`${getSeasonLabel(season)} layout applied.`);
+      else ui.notifications.warn(`${getSeasonLabel(season)} has no saved layout yet.`);
     });
 
     html.on("click.shapeshifterMyth", ".shapeshifter-passion .plusBtn, .shapeshifter-passion .minusBtn, .shapeshifter-renown__total .plusBtn, .shapeshifter-renown__total .minusBtn, .shapeshifter-myth__stat .plusBtn, .shapeshifter-myth__stat .minusBtn", async ev => {
